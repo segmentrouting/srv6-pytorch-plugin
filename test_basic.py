@@ -84,8 +84,13 @@ def main():
             # Extract SRv6 information from the path
             srv6_data = api_response.get('srv6_data', {})
             
+            # Get the destination IP from the API response
+            # In a real environment, this would come from the API
+            # For now, we'll use a placeholder IPv6 address
+            dest_ip = "2001:db8:1002::2"  # This should come from the API
+            
             route_info = {
-                'destination': test_dest,
+                'destination': f"{dest_ip}/64",  # Add prefix length
                 'next_hop': srv6_data.get('srv6_sid_list', [])[0] if srv6_data.get('srv6_sid_list') else 'N/A',
                 'segment_list': srv6_data.get('srv6_sid_list', []),
                 'interface': os.environ['BACKEND_INTERFACE'],
