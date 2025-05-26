@@ -18,33 +18,6 @@ This plugin enhances PyTorch's distributed training by:
 - `demo/test_plugin.py`: Full demo application using containerlab
 - `distributed_app.py`: Example distributed training application
 
-## Quick Start
-
-### Basic Testing
-
-For quick testing of the plugin's core functionality:
-
-1. Create a `.env` file:
-```bash
-JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
-TOPOLOGY_COLLECTION=your-collection-name
-TEST_DESTINATION=2001:db8::2  # Optional: IP of the other node
-```
-
-2. Run the basic test:
-```bash
-python test_basic.py
-```
-
-This will:
-- Initialize the plugin
-- Program SRv6 routes
-- Test connectivity with a ping
-
-### Full Demo
-
-For a complete example using containerlab to simulate a network topology, see the `demo/` directory.
-
 ### Prerequisites
 
 - Python 3.8+
@@ -85,6 +58,11 @@ ROUTE_TABLE_ID=254
 python test_basic.py
 ```
 
+This will:
+- Initialize the plugin
+- Program SRv6 routes
+- Test connectivity with a ping
+- 
 Note: For full functionality including SRv6 route programming, your system needs:
 - Linux kernel with SRv6 support
 - `iproute2` package installed

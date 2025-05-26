@@ -26,39 +26,56 @@ def print_route_info(route_data):
         print(f"ip -6 route add {route_data['destination']} encap seg6 mode encap segs {segments} dev {route_data['interface']} table {route_data['table_id']}")
 
 def main():
+    # Set required environment variables
+    os.environ['RANK'] = os.getenv('RANK', '0')
+    os.environ['WORLD_SIZE'] = os.getenv('WORLD_SIZE', '2')
+    os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
+    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29500')
+    os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth0')
+    os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
+    
+    if not os.environ['TOPOLOGY_COLLECTION']:
+        print("Error: TOPOLOGY_COLLECTION environment variable is required")
+        return
+    
     # Initialize the plugin with API endpoint from .env
     net_dist = NetworkOptimizedDistributed(
         api_endpoint=os.getenv('JALAPENO_API_ENDPOINT')
     )
     
-    # Set environment variables for distributed setup
-    os.environ['RANK'] = '0'
-    os.environ['WORLD_SIZE'] = '2'  # Testing with 2 nodes
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
-    
     print("Initializing distributed training with network optimization...")
+    print(f"Using interface: {os.environ['BACKEND_INTERFACE']}")
+    print(f"Master address: {os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}")
     
-    # Initialize distributed (this will get route information)
-    net_dist.init_process_group(backend='nccl')
-    
-    # Wait for route information to be processed
-    time.sleep(2)
-    
-    # Get and print route information
-    route_info = net_dist.get_route_info()
-    if route_info:
-        print_route_info(route_info)
-    else:
-        print("\nNo route information available. Check API connection and topology collection.")
-    
-    # Test connectivity if TEST_DESTINATION is set
-    test_destination = os.getenv('TEST_DESTINATION')
-    if test_destination:
-        print(f"\nTesting connectivity to {test_destination}")
-        os.system(f"ping6 -c 3 {test_destination}")
-    
-    print("\nTest completed. Check the logs for additional details.")
+    try:
+        # Initialize distributed (this will get route information)
+        net_dist.init_process_group(backend='nccl')
+        
+        # Wait for route information to be processed
+        time.sleep(2)
+        
+        # Get and print route information
+        route_info = net_dist.get_route_info()
+        if route_info:
+            print_route_info(route_info)
+        else:
+            print("\nNo route information available. Check API connection and topology collection.")
+        
+        # Test connectivity if TEST_DESTINATION is set
+        test_destination = os.getenv('TEST_DESTINATION')
+        if test_destination:
+            print(f"\nTesting connectivity to {test_destination}")
+            os.system(f"ping6 -c 3 {test_destination}")
+        
+        print("\nTest completed. Check the logs for additional details.")
+        
+    except Exception as e:
+        print(f"\nError during initialization: {str(e)}")
+        print("\nTroubleshooting tips:")
+        print("1. Ensure all required environment variables are set")
+        print("2. Check API endpoint connectivity")
+        print("3. Verify interface name is correct")
+        print("4. For route programming, run with sudo -E to preserve environment")
 
 if __name__ == "__main__":
     main() 
