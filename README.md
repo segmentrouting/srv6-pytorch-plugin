@@ -60,6 +60,15 @@ sudo -E ./venv/bin/python test_basic.py
 sudo -E bash -c 'source venv/bin/activate && python test_basic.py'
 ```
 
+or 
+```bash
+# Using default values (host00 -> host01)
+sudo -E ./venv/bin/python test_basic.py
+
+# Or specify different hosts
+sudo -E TEST_SOURCE=hosts/clab-sonic-host02 TEST_DESTINATION=hosts/clab-sonic-host03 ./venv/bin/python test_basic.py
+```
+
 This will:
 - Initialize the plugin
 - Program SRv6 routes

@@ -159,15 +159,16 @@ class NetworkOptimizedDistributed:
             # Call the network API
             try:
                 logger.info(f"Calling network API to optimize NCCL paths")
-                # For testing, we'll use the first non-local node as destination
-                dest_node = gpu_nodes[1] if len(gpu_nodes) > 1 else None
+                # Use test source and destination if provided
+                test_source = os.environ.get('TEST_SOURCE')
+                test_dest = os.environ.get('TEST_DESTINATION')
                 
-                if dest_node:
+                if test_source and test_dest:
                     response = requests.get(
                         f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
                         params={
-                            'source': f"hosts/{node_info['hostname']}",
-                            'destination': f"hosts/{dest_node['hostname']}",
+                            'source': test_source,
+                            'destination': test_dest,
                             'direction': 'outbound'
                         }
                     )
@@ -180,8 +181,29 @@ class NetworkOptimizedDistributed:
                     # Store the paths for distribution to other ranks
                     self.optimized_paths = api_response.get("paths", [])
                 else:
-                    logger.warning("No destination node available for path optimization")
-                    self.optimized_paths = []
+                    # Fall back to using the first non-local node as destination
+                    dest_node = gpu_nodes[1] if len(gpu_nodes) > 1 else None
+                    
+                    if dest_node:
+                        response = requests.get(
+                            f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
+                            params={
+                                'source': f"hosts/{node_info['hostname']}",
+                                'destination': f"hosts/{dest_node['hostname']}",
+                                'direction': 'outbound'
+                            }
+                        )
+                        response.raise_for_status()
+                        
+                        # Process the response
+                        api_response = response.json()
+                        logger.info(f"Network API response: {api_response}")
+                        
+                        # Store the paths for distribution to other ranks
+                        self.optimized_paths = api_response.get("paths", [])
+                    else:
+                        logger.warning("No destination node available for path optimization")
+                        self.optimized_paths = []
                 
             except Exception as e:
                 logger.error(f"Warning: Network API call failed: {e}")

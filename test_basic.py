@@ -33,6 +33,8 @@ def main():
     os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29500')
     os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth0')
     os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
+    os.environ['TEST_SOURCE'] = os.getenv('TEST_SOURCE', 'hosts/clab-sonic-host00')
+    os.environ['TEST_DESTINATION'] = os.getenv('TEST_DESTINATION', 'hosts/clab-sonic-host01')
     
     if not os.environ['TOPOLOGY_COLLECTION']:
         print("Error: TOPOLOGY_COLLECTION environment variable is required")
@@ -46,6 +48,8 @@ def main():
     print("Initializing distributed training with network optimization...")
     print(f"Using interface: {os.environ['BACKEND_INTERFACE']}")
     print(f"Master address: {os.environ['MASTER_ADDR']}:{os.environ['MASTER_PORT']}")
+    print(f"Test source: {os.environ['TEST_SOURCE']}")
+    print(f"Test destination: {os.environ['TEST_DESTINATION']}")
     
     try:
         # Initialize distributed (this will get route information)
