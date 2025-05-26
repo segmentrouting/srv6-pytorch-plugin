@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pytorch-distributed-training
+spec:
+  serviceName: "pytorch-distributed"
+  replicas: 4  # Number of nodes
+  selector:
+    matchLabels:
+      app: pytorch-distributed
+  template:
+    metadata:
+      labels:
+        app: pytorch-distributed
+    spec:
+      containers:
+      - name: pytorch
+        image: your-pytorch-image:latest
+        command: ["python", "/app/entrypoint.py", "/app/train.py", "--epochs", "10"]
+        env:
+        - name: WORLD_SIZE
+          value: "4"  # Total number of processes
+        - name: MASTER_ADDR
+          value: "pytorch-distributed-training-0.pytorch-distributed"  # First pod's DNS name
+        - name: MASTER_PORT
+          value: "29500"
+        - name: API_ENDPOINT
+          value: "http://network-api-service:8000"
+        - name: RANK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.ordinal  # Pod index becomes the rank
+        volumeMounts:
+        - name: training-code
+          mountPath: /app
+      volumes:
+      - name: training-code
+        configMap:
+          name: training-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pytorch-distributed
+spec:
+  clusterIP: None  # Headless service for StatefulSet DNS
+  selector:
+    app: pytorch-distributed
+  ports:
+  - port: 29500
+    name: nccl 

@@ -1,0 +1,21 @@
+FROM ubuntu:22.04
+
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN pip3 install torch torchvision torchaudio \
+    requests netifaces pyroute2
+
+# Copy plugin files
+COPY ../network_optimized_distributed.py /app/
+COPY ../route_programmer.py /app/
+COPY test_plugin.py /app/
+
+WORKDIR /app
