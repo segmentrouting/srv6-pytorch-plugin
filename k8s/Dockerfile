@@ -9,9 +9,12 @@ RUN apt-get update && apt-get install -y \
     net-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages
-RUN pip3 install torch torchvision torchaudio \
-    requests netifaces pyroute2 python-dotenv
+# Copy requirements first for better caching
+COPY requirements.txt /app/
+WORKDIR /app
+
+# Install Python packages from requirements.txt
+RUN pip3 install -r requirements.txt
 
 # Copy plugin files
 COPY network_optimized_distributed.py /app/
