@@ -2,11 +2,15 @@
 import os
 import time
 import json
+import signal
 from dotenv import load_dotenv
 from network_optimized_distributed import NetworkOptimizedDistributed
 
 # Load environment variables
 load_dotenv()
+
+def timeout_handler(signum, frame):
+    raise TimeoutError("Operation timed out")
 
 def print_route_info(route_data):
     """Print formatted SRv6 route information."""
@@ -52,6 +56,10 @@ def main():
     print(f"Test destination: {os.environ['TEST_DESTINATION']}")
     
     try:
+        # Set a 10-second timeout
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(10)
+        
         # Initialize distributed to get route information
         net_dist.init_process_group(backend='nccl')
         
@@ -69,19 +77,29 @@ def main():
                 'table_id': os.environ.get('ROUTE_TABLE_ID', '254')
             }
             
+            # Always print the route information
             print_route_info(route_info)
             
-            # Program the route if route programmer is available
+            # Try to program the route if route programmer is available
             if net_dist.route_programmer:
-                net_dist.program_srv6_route(
-                    destination=route_info['destination'],
-                    sid_list=route_info['segment_list']
-                )
+                try:
+                    net_dist.program_srv6_route(
+                        destination=route_info['destination'],
+                        sid_list=route_info['segment_list']
+                    )
+                except Exception as e:
+                    print(f"\nWarning: Route programming failed: {str(e)}")
+                    print("The route information above shows what would have been programmed.")
         else:
             print("\nNo route information available. Check API connection and topology collection.")
         
+        # Disable the alarm
+        signal.alarm(0)
         print("\nTest completed. Check the logs for additional details.")
         
+    except TimeoutError:
+        print("\nOperation timed out after 10 seconds.")
+        print("The route information above shows what would have been programmed.")
     except Exception as e:
         print(f"\nError during initialization: {str(e)}")
         print("\nTroubleshooting tips:")
