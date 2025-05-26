@@ -52,18 +52,33 @@ def main():
     print(f"Test destination: {os.environ['TEST_DESTINATION']}")
     
     try:
-        # Get route information directly without NCCL initialization
-        route_info = net_dist.get_route_info()
-        if route_info:
+        # Initialize distributed to get route information
+        net_dist.init_process_group(backend='nccl')
+        
+        # Get the route information from the API response
+        if hasattr(net_dist, 'optimized_paths') and net_dist.optimized_paths:
+            # Extract SRv6 information from the path
+            path = net_dist.optimized_paths[0]  # Get the first path
+            srv6_data = path.get('srv6_data', {})
+            
+            route_info = {
+                'destination': os.environ['TEST_DESTINATION'],
+                'next_hop': srv6_data.get('srv6_sid_list', [])[0] if srv6_data.get('srv6_sid_list') else 'N/A',
+                'segment_list': srv6_data.get('srv6_sid_list', []),
+                'interface': os.environ['BACKEND_INTERFACE'],
+                'table_id': os.environ.get('ROUTE_TABLE_ID', '254')
+            }
+            
             print_route_info(route_info)
+            
+            # Program the route if route programmer is available
+            if net_dist.route_programmer:
+                net_dist.program_srv6_route(
+                    destination=route_info['destination'],
+                    sid_list=route_info['segment_list']
+                )
         else:
             print("\nNo route information available. Check API connection and topology collection.")
-        
-        # Test connectivity if TEST_DESTINATION is set
-        test_destination = os.getenv('TEST_DESTINATION')
-        if test_destination:
-            print(f"\nTesting connectivity to {test_destination}")
-            os.system(f"ping6 -c 3 {test_destination}")
         
         print("\nTest completed. Check the logs for additional details.")
         
