@@ -55,7 +55,9 @@ ROUTE_TABLE_ID=254
 
 5. Test the installation:
 ```bash
-python test_basic.py
+python3 test_basic.py
+sudo -E ./venv/bin/python test_basic.py
+sudo -E bash -c 'source venv/bin/activate && python test_basic.py'
 ```
 
 This will:
