@@ -52,13 +52,7 @@ def main():
     print(f"Test destination: {os.environ['TEST_DESTINATION']}")
     
     try:
-        # Initialize distributed (this will get route information)
-        net_dist.init_process_group(backend='nccl')
-        
-        # Wait for route information to be processed
-        time.sleep(2)
-        
-        # Get and print route information
+        # Get route information directly without NCCL initialization
         route_info = net_dist.get_route_info()
         if route_info:
             print_route_info(route_info)
