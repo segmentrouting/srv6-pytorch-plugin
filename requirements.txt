@@ -10,7 +10,7 @@ netifaces>=0.11.0
 pyroute2>=0.7.0
 
 # VPP support (optional)
-vpp-papi>=21.10.0
+vpp-papi>=2.3.0
 
 # Development dependencies
 pytest>=7.0.0  # For testing
