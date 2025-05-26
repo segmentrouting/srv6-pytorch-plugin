@@ -61,7 +61,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
             # Get interface index
             if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
             
-            # Create encap info
+            # Create encap info using the uSID
             encap = {'type': 'seg6',
                     'mode': 'encap',
                     'segs': [expanded_usid]}
@@ -204,7 +204,7 @@ class VPPRouteProgrammer(RouteProgrammer):
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to delete steering policy: {result.stderr}")
 
-            # Then delete SR policy
+            # Delete SR policy
             policy_cmd = f"sr policy del bsid {bsid}"
             if 'VPP_DEBUG' in os.environ:
                 print(f"Executing: vppctl {policy_cmd}")
@@ -218,7 +218,7 @@ class VPPRouteProgrammer(RouteProgrammer):
             return False, f"Failed to delete route: {str(e)}"
 
     def __del__(self):
-        pass  # No cleanup needed for CLI approach
+        pass
 
 class RouteProgrammerFactory:
     @staticmethod
