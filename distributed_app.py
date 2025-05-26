@@ -2,10 +2,16 @@ import os
 import torch
 import torch.distributed as dist
 from network_optimized_distributed import NetworkOptimizedDistributed
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def main():
-    # Initialize our wrapper with API endpoint
-    net_dist = NetworkOptimizedDistributed(api_endpoint="http://api-service:8000")
+    # Initialize our wrapper with API endpoint from environment
+    net_dist = NetworkOptimizedDistributed(
+        api_endpoint=os.getenv('JALAPENO_API_ENDPOINT')
+    )
     
     # Initialize distributed training with network optimization
     net_dist.init_process_group(backend="nccl")

@@ -11,11 +11,12 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python packages
 RUN pip3 install torch torchvision torchaudio \
-    requests netifaces pyroute2
+    requests netifaces pyroute2 python-dotenv
 
 # Copy plugin files
-COPY ../network_optimized_distributed.py /app/
-COPY ../route_programmer.py /app/
+COPY network_optimized_distributed.py /app/
+COPY route_programmer.py /app/
 COPY test_plugin.py /app/
+COPY .env /app/
 
 WORKDIR /app

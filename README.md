@@ -1,76 +1,153 @@
-# nccl
+# SRv6 PyTorch Plugin
 
+A PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6 (Segment Routing over IPv6).
 
-## Distributed Training with Network Optimization
+## Overview
 
-Docker run command to spin up nccl simulation containers:
+This plugin enhances PyTorch's distributed training by:
+1. Intercepting NCCL communication setup
+2. Querying Jalapeno API for optimized SRv6 paths
+3. Programming local SRv6 routes for optimal network paths
+4. Enabling distributed training with network-aware routing
 
+## Components
+
+- `network_optimized_distributed.py`: Main plugin that wraps PyTorch's distributed functionality
+- `route_programmer.py`: Platform-specific route programming (Linux/VPP)
+- `test_basic.py`: Simple test script for basic functionality testing
+- `demo/test_plugin.py`: Full demo application using containerlab
+- `distributed_app.py`: Example distributed training application
+
+## Quick Start
+
+### Basic Testing
+
+For quick testing of the plugin's core functionality:
+
+1. Create a `.env` file:
 ```bash
-# Example Docker run command for dual-homed containers
-docker run -d --name nccl00 \
-  --network frontend \
-  --network backend \
-  --hostname nccl00 \
-  -v $(pwd)/pytorch_app:/app \
-  pytorch/pytorch:latest
+JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
+TOPOLOGY_COLLECTION=your-collection-name
+TEST_DESTINATION=2001:db8::2  # Optional: IP of the other node
 ```
 
-# Run on a single node with simulated processes
+2. Run the basic test:
 ```bash
-python -m torch.distributed.launch --nproc_per_node=4 distributed_app.py
+python test_basic.py
 ```
 
-# Or across multiple containers
+This will:
+- Initialize the plugin
+- Program SRv6 routes
+- Test connectivity with a ping
+
+### Full Demo
+
+For a complete example using containerlab to simulate a network topology, see the `demo/` directory.
+
+### Prerequisites
+
+- Python 3.8+
+- PyTorch
+- Access to Jalapeno API
+- Linux kernel with SRv6 support (for route programming)
+
+### Installation
+
+1. Clone the repository:
 ```bash
-# On nccl00 (master):
-MASTER_ADDR=nccl00 MASTER_PORT=29500 WORLD_SIZE=4 RANK=0 python distributed_app.py
-
-# On nccl01:
-MASTER_ADDR=nccl00 MASTER_PORT=29500 WORLD_SIZE=4 RANK=1 python distributed_app.py
-
-# And so on for nccl02 and nccl03
-
-## API service
-### Install dependencies
-```bash
-pip install fastapi uvicorn pydantic
+git clone https://github.com/segment-routing/srv6-pytorch-plugin.git
+cd srv6-pytorch-plugin
 ```
 
-### Run the API server
+2. Create and activate a virtual environment (recommended):
 ```bash
-python network_api.py
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### curl test
-```json
-curl -X POST http://localhost:8000/optimize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "job_id": "test_job_1",
-    "world_size": 4,
-    "master_addr": "nccl00",
-    "nodes": [
-      {
-        "hostname": "nccl00",
-        "interfaces": {
-          "eth0": "10.1.0.10",
-          "eth1": "10.2.0.10"
-        }
-      },    
-      {
-        "hostname": "nccl01",
-        "interfaces": {
-          "eth0": "10.1.0.11",
-          "eth1": "10.2.0.11"
-        }
-      }
-    ],
-    "frontend_network": "10.1.0.0/16",
-    "backend_network": "10.2.0.0/16"
-  }'
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-### Get optimization status
+4. Create a `.env` file with your configuration:
 ```bash
-curl http://localhost:8000/optimization/test_job_1
+JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
+TOPOLOGY_COLLECTION=your-collection-name
+BACKEND_INTERFACE=eth0
+ROUTE_PLATFORM=linux
+ROUTE_TABLE_ID=254
 ```
+
+5. Test the installation:
+```bash
+python test_basic.py
+```
+
+Note: For full functionality including SRv6 route programming, your system needs:
+- Linux kernel with SRv6 support
+- `iproute2` package installed
+- Appropriate permissions to program routes
+
+### Basic Usage
+
+```python
+from network_optimized_distributed import NetworkOptimizedDistributed
+
+# Initialize with Jalapeno API endpoint
+net_dist = NetworkOptimizedDistributed(
+    api_endpoint=os.getenv('JALAPENO_API_ENDPOINT')
+)
+
+# Initialize distributed training with network optimization
+net_dist.init_process_group(backend="nccl")
+```
+
+## Environment Variables
+
+- `JALAPENO_API_ENDPOINT`: URL of the Jalapeno API
+- `TOPOLOGY_COLLECTION`: Name of the topology collection in Jalapeno
+- `BACKEND_INTERFACE`: Network interface for SRv6 routes (default: eth1)
+- `ROUTE_PLATFORM`: Route programming platform (linux/vpp)
+- `ROUTE_TABLE_ID`: Routing table ID (default: 254)
+- `TEST_DESTINATION`: IPv6 address for testing connectivity (used by test_basic.py)
+
+## Demo
+
+The `demo/` directory contains a complete example using containerlab to simulate a network topology with SONiC switches. See `demo/readme.md` for detailed instructions.
+
+## Kubernetes Deployment
+
+The `k8s/` directory contains Kubernetes deployment files for running distributed training jobs with network optimization.
+
+## Application flow
+
+[PyTorch Distributed Training]
+        ↓
+[NetworkOptimizedDistributed Plugin]
+        ↓
+1. Intercepts NCCL initialization
+2. Collects node information (IP, hostname)
+        ↓
+[Jalapeno API]
+        ↓
+3. Queries /graphs/{collection_name}/shortest_path/load
+4. Gets back SRv6 path information
+        ↓
+[Route Programmer]
+        ↓
+5. Programs local SRv6 routes
+        ↓
+[NCCL Communication]
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+

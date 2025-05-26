@@ -1,3 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pytorch-distributed-config
+data:
+  JALAPENO_API_ENDPOINT: "http://jalapeno-api:8000"
+  TOPOLOGY_COLLECTION: "fabric_graph"
+  BACKEND_INTERFACE: "eth0"
+  ROUTE_PLATFORM: "linux"
+  ROUTE_TABLE_ID: "254"
+  WORLD_SIZE: "4"
+  MASTER_PORT: "29500"
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -15,17 +28,14 @@ spec:
     spec:
       containers:
       - name: pytorch
-        image: your-pytorch-image:latest
-        command: ["python", "/app/entrypoint.py", "/app/train.py", "--epochs", "10"]
+        image: pytorch-srv6-demo:latest
+        command: ["python", "/app/entrypoint.py", "/app/test_plugin.py"]
+        envFrom:
+        - configMapRef:
+            name: pytorch-distributed-config
         env:
-        - name: WORLD_SIZE
-          value: "4"  # Total number of processes
         - name: MASTER_ADDR
           value: "pytorch-distributed-training-0.pytorch-distributed"  # First pod's DNS name
-        - name: MASTER_PORT
-          value: "29500"
-        - name: API_ENDPOINT
-          value: "http://network-api-service:8000"
         - name: RANK
           valueFrom:
             fieldRef:

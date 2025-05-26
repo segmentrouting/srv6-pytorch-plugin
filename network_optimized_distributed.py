@@ -159,10 +159,13 @@ class NetworkOptimizedDistributed:
             # Call the network API
             try:
                 logger.info(f"Calling network API to optimize NCCL paths")
-                response = requests.post(
-                    f"{self.api_endpoint}/nccl/optimize", 
-                    json=payload,
-                    headers={"Content-Type": "application/json"}
+                response = requests.get(
+                    f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
+                    params={
+                        'source': f"hosts/{node_info['hostname']}",
+                        'destination': f"hosts/{dest_node['hostname']}",
+                        'direction': 'outbound'
+                    }
                 )
                 response.raise_for_status()
                 

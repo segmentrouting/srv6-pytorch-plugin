@@ -9,21 +9,16 @@ spec:
     spec:
       containers:
       - name: pytorch
-        image: your-pytorch-image:latest
-        command: ["python", "/app/entrypoint.py", "/app/train.py", "--epochs", "10"]
+        image: pytorch-srv6-demo:latest
+        command: ["python", "/app/entrypoint.py", "/app/test_plugin.py"]
+        envFrom:
+        - configMapRef:
+            name: pytorch-distributed-config
         env:
-        - name: WORLD_SIZE
-          value: "4"  # Total number of processes
         - name: MASTER_ADDR
           value: "pytorch-distributed-training-0"  # First pod hostname
-        - name: MASTER_PORT
-          value: "29500"
-        - name: API_ENDPOINT
-          value: "http://network-api-service:8000"
         - name: RANK
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.annotations['pytorch-rank']
+          value: "0"  # For a single job, we'll use rank 0
         volumeMounts:
         - name: training-code
           mountPath: /app
@@ -32,15 +27,3 @@ spec:
         configMap:
           name: training-code
       restartPolicy: Never
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: training-code
-data:
-  entrypoint.py: |
-    # Content of entrypoint.py
-  network_optimized_distributed.py: |
-    # Content of network_optimized_distributed.py
-  train.py: |
-    # Your actual training script 

@@ -1,15 +1,23 @@
-FROM pytorch/pytorch:latest
+FROM ubuntu:22.04
 
 # Install required packages
-RUN pip install requests netifaces
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy your code
-COPY entrypoint.py /app/
+# Install Python packages
+RUN pip3 install torch torchvision torchaudio \
+    requests netifaces pyroute2 python-dotenv
+
+# Copy plugin files
 COPY network_optimized_distributed.py /app/
-COPY train.py /app/
-
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.py
+COPY route_programmer.py /app/
+COPY test_plugin.py /app/
+COPY entrypoint.py /app/
 
 WORKDIR /app
 ENTRYPOINT ["python", "/app/entrypoint.py"] 

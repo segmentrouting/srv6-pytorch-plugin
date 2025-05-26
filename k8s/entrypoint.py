@@ -10,10 +10,12 @@ def main():
     world_size = int(os.environ.get('WORLD_SIZE', '1'))
     master_addr = os.environ.get('MASTER_ADDR', 'localhost')
     master_port = os.environ.get('MASTER_PORT', '29500')
-    api_endpoint = os.environ.get('API_ENDPOINT', 'http://network-api:8000')
+    api_endpoint = os.environ.get('JALAPENO_API_ENDPOINT', 'http://198.18.128.101:30800/api/v1')
+    topology_collection = os.environ.get('TOPOLOGY_COLLECTION', 'fabric_graph')
     
     print(f"Initializing distributed process: rank={rank}, world_size={world_size}")
     print(f"Master: {master_addr}:{master_port}")
+    print(f"API Endpoint: {api_endpoint}")
     
     # Initialize our network-optimized distributed wrapper
     net_dist = NetworkOptimizedDistributed(api_endpoint=api_endpoint)
