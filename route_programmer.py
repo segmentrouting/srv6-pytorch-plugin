@@ -20,18 +20,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         self.iproute = IPRoute()
 
     def _expand_srv6_usid(self, usid):
-        """Expand SRv6 USID to full IPv6 address"""
-        # Remove any trailing colons
-        usid = usid.rstrip(':')
-        
-        # Split the USID into parts
-        parts = usid.split(':')
-        
-        # Add zeros to make it a complete IPv6 address (8 parts)
-        while len(parts) < 8:
-            parts.append('0')
-            
-        return ':'.join(parts)
+        """Return the SRv6 USID as is, since it's already in the correct format"""
+        return usid
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program Linux SRv6 route using pyroute2"""
@@ -139,18 +129,8 @@ class VPPRouteProgrammer(RouteProgrammer):
             raise RuntimeError(f"Failed to connect to VPP: {str(e)}")
 
     def _expand_srv6_usid(self, usid):
-        """Expand SRv6 USID to full IPv6 address"""
-        # Remove any trailing colons
-        usid = usid.rstrip(':')
-        
-        # Split the USID into parts
-        parts = usid.split(':')
-        
-        # Add zeros to make it a complete IPv6 address (8 parts)
-        while len(parts) < 8:
-            parts.append('0')
-            
-        return ':'.join(parts)
+        """Return the SRv6 USID as is, since it's already in the correct format"""
+        return usid
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program VPP SRv6 route using CLI"""
