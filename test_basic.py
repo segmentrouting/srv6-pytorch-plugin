@@ -3,6 +3,7 @@ import os
 import time
 import json
 import signal
+import requests
 from dotenv import load_dotenv
 from network_optimized_distributed import NetworkOptimizedDistributed
 
@@ -60,17 +61,31 @@ def main():
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(10)
         
-        # Initialize distributed to get route information
-        net_dist.init_process_group(backend='nccl')
+        # Call the API directly
+        test_source = os.environ['TEST_SOURCE']
+        test_dest = os.environ['TEST_DESTINATION']
+        collection_name = os.environ['TOPOLOGY_COLLECTION']
         
-        # Get the route information from the API response
-        if hasattr(net_dist, 'optimized_paths') and net_dist.optimized_paths:
+        response = requests.get(
+            f"{net_dist.api_endpoint}/graphs/{collection_name}/shortest_path/load",
+            params={
+                'source': test_source,
+                'destination': test_dest,
+                'direction': 'outbound'
+            }
+        )
+        response.raise_for_status()
+        
+        # Process the response
+        api_response = response.json()
+        print(f"\nAPI Response: {api_response}")
+        
+        if api_response.get('found'):
             # Extract SRv6 information from the path
-            path = net_dist.optimized_paths[0]  # Get the first path
-            srv6_data = path.get('srv6_data', {})
+            srv6_data = api_response.get('srv6_data', {})
             
             route_info = {
-                'destination': os.environ['TEST_DESTINATION'],
+                'destination': test_dest,
                 'next_hop': srv6_data.get('srv6_sid_list', [])[0] if srv6_data.get('srv6_sid_list') else 'N/A',
                 'segment_list': srv6_data.get('srv6_sid_list', []),
                 'interface': os.environ['BACKEND_INTERFACE'],
