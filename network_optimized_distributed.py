@@ -150,15 +150,14 @@ class NetworkOptimizedDistributed:
         os.environ['GLOO_SOCKET_IFNAME'] = backend_iface  # Set network interface for Gloo backend
         
         # Additional Gloo backend settings
-        os.environ['GLOO_DEVICE_TRANSPORT'] = 'tcp'
-        os.environ['GLOO_SOCKET_IFNAME'] = backend_iface
+        os.environ['GLOO_SOCKET_FAMILY'] = 'AF_INET6'  # Use IPv6
         
         # Log all relevant environment variables
         logger.info("Distributed environment variables:")
         logger.info(f"  NCCL_IB_DISABLE: {os.environ.get('NCCL_IB_DISABLE')}")
         logger.info(f"  NCCL_SOCKET_IFNAME: {os.environ.get('NCCL_SOCKET_IFNAME')}")
         logger.info(f"  GLOO_SOCKET_IFNAME: {os.environ.get('GLOO_SOCKET_IFNAME')}")
-        logger.info(f"  GLOO_DEVICE_TRANSPORT: {os.environ.get('GLOO_DEVICE_TRANSPORT')}")
+        logger.info(f"  GLOO_SOCKET_FAMILY: {os.environ.get('GLOO_SOCKET_FAMILY')}")
         
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
