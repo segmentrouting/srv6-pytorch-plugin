@@ -112,12 +112,8 @@ def main():
     
     # Get the master IP address based on rank
     rank = int(os.environ['RANK'])
-    if rank == 0:
-        master_ip = '2001:db8:1000::2'  # host00 IPv6
-    elif rank == 1:
-        master_ip = '2001:db8:1001::2'  # host01 IPv6
-    else:
-        master_ip = '2001:db8:1003::2'  # host03 IPv6
+    # Always use host00 as the master
+    master_ip = '2001:db8:1000::2'  # host00 IPv6
     
     os.environ['MASTER_ADDR'] = master_ip
     os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29501')
