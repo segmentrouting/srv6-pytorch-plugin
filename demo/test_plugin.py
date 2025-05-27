@@ -3,7 +3,7 @@ import time
 import socket
 import netifaces
 from dotenv import load_dotenv
-from network_optimized_distributed import NetworkOptimizedDistributed
+from net_dist import NetworkOptimizedDistributed
 
 # Load environment variables
 load_dotenv()
