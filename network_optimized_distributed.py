@@ -162,29 +162,6 @@ class NetworkOptimizedDistributed:
             }
             logger.info(f"init_process_group parameters: {init_params}")
             
-            # Try to create a test socket before initialization
-            if rank == 0:
-                logger.info("Testing socket creation on master node...")
-                try:
-                    test_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                    test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    test_sock.bind(('::', int(master_port)))
-                    test_sock.listen(1)
-                    logger.info(f"Successfully created and bound test socket on port {master_port}")
-                    test_sock.close()
-                except Exception as e:
-                    logger.error(f"Failed to create test socket: {e}")
-            else:
-                logger.info("Testing connection to master node...")
-                try:
-                    test_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                    test_sock.settimeout(5)
-                    test_sock.connect((master_addr, int(master_port)))
-                    logger.info("Successfully connected to master node")
-                    test_sock.close()
-                except Exception as e:
-                    logger.error(f"Failed to connect to master node: {e}")
-            
             # Initialize the process group
             dist.init_process_group(**init_params)
             logger.info("PyTorch distributed initialization successful")
