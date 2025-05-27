@@ -115,7 +115,16 @@ class NetworkOptimizedDistributed:
         # Check port status before initialization
         if rank == 0:
             logger.info("Checking port status before initialization:")
-            os.system("netstat -tuln | grep 29500")
+            try:
+                # Try to create a test socket to verify we can bind
+                test_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                test_sock.bind(('::', int(master_port)))
+                test_sock.listen(1)
+                logger.info(f"Successfully bound test socket to port {master_port}")
+                test_sock.close()
+            except Exception as e:
+                logger.error(f"Failed to bind test socket: {e}")
         
         # Get local IPv6 address for the backend interface
         node_info = self.get_network_interfaces()
@@ -140,11 +149,16 @@ class NetworkOptimizedDistributed:
         os.environ['NCCL_SOCKET_IFNAME'] = backend_iface  # Set network interface
         os.environ['GLOO_SOCKET_IFNAME'] = backend_iface  # Set network interface for Gloo backend
         
+        # Additional Gloo backend settings
+        os.environ['GLOO_DEVICE_TRANSPORT'] = 'tcp'
+        os.environ['GLOO_SOCKET_IFNAME'] = backend_iface
+        
         # Log all relevant environment variables
         logger.info("Distributed environment variables:")
         logger.info(f"  NCCL_IB_DISABLE: {os.environ.get('NCCL_IB_DISABLE')}")
         logger.info(f"  NCCL_SOCKET_IFNAME: {os.environ.get('NCCL_SOCKET_IFNAME')}")
         logger.info(f"  GLOO_SOCKET_IFNAME: {os.environ.get('GLOO_SOCKET_IFNAME')}")
+        logger.info(f"  GLOO_DEVICE_TRANSPORT: {os.environ.get('GLOO_DEVICE_TRANSPORT')}")
         
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
@@ -170,11 +184,6 @@ class NetworkOptimizedDistributed:
             # Initialize the process group
             dist.init_process_group(**init_params)
             logger.info("PyTorch distributed initialization successful")
-            
-            # Check port status after initialization
-            if rank == 0:
-                logger.info("Checking port status after initialization:")
-                os.system("netstat -tuln | grep 29500")
             
             # Log the process group state
             logger.info("Process group state:")

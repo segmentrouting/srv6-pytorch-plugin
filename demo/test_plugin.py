@@ -15,10 +15,14 @@ def test_tcp_connectivity(host, port, timeout=5):
     try:
         # Create IPv6 socket
         sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.settimeout(timeout)
         print(f"  Attempting to connect...")
         result = sock.connect_ex((host, port))
         print(f"  connect_ex result: {result}")
+        if result != 0:
+            print(f"  Connection failed with error code: {result}")
+            print(f"  Error meaning: {socket.errorTab.get(result, 'Unknown error')}")
         sock.close()
         return result == 0
     except Exception as e:
@@ -32,11 +36,18 @@ def check_port_status(port):
         # Try both IPv4 and IPv6
         for family in (socket.AF_INET, socket.AF_INET6):
             sock = socket.socket(family, socket.SOCK_STREAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.settimeout(1)
-            result = sock.connect_ex(('localhost', port))
-            sock.close()
-            if result == 0:
-                return True
+            try:
+                sock.bind(('::' if family == socket.AF_INET6 else '0.0.0.0', port))
+                sock.close()
+                return False  # Port is available
+            except socket.error as e:
+                if e.errno == 98:  # Address already in use
+                    return True
+                print(f"Error checking port {port} with family {family}: {e}")
+            finally:
+                sock.close()
         return False
     except Exception as e:
         print(f"Error checking port {port}: {e}")
@@ -54,6 +65,45 @@ def print_route_info(destination, srv6_data, interface, table_id=254):
     print("-" * 50)
     print("\nEquivalent ip route command:")
     print(f"ip -6 route add {destination} encap seg6 mode encap segs {srv6_data['srv6_usid']} dev {interface} table {table_id}")
+
+def test_tcp_server_client():
+    """Test basic TCP server/client functionality"""
+    rank = int(os.environ['RANK'])
+    master_port = int(os.environ['MASTER_PORT'])
+    
+    if rank == 0:  # Server
+        print("\nStarting TCP server test...")
+        server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            server.bind(('::', master_port))
+            server.listen(1)
+            print(f"Server listening on port {master_port}")
+            
+            # Wait for a short time to see if clients connect
+            server.settimeout(5)
+            try:
+                client, addr = server.accept()
+                print(f"Received connection from {addr}")
+                client.close()
+            except socket.timeout:
+                print("No clients connected within timeout")
+        except Exception as e:
+            print(f"Server error: {e}")
+        finally:
+            server.close()
+    else:  # Client
+        print("\nStarting TCP client test...")
+        client = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        try:
+            master_addr = os.environ['MASTER_ADDR']
+            print(f"Attempting to connect to {master_addr}:{master_port}")
+            client.connect((master_addr, master_port))
+            print("Successfully connected to server")
+        except Exception as e:
+            print(f"Client error: {e}")
+        finally:
+            client.close()
 
 def main():
     # Set environment variables for distributed setup
@@ -85,6 +135,9 @@ def main():
     print(f"TOPOLOGY_COLLECTION: {os.environ['TOPOLOGY_COLLECTION']}")
     print(f"JALAPENO_API_ENDPOINT: {os.getenv('JALAPENO_API_ENDPOINT')}")
     print("-" * 50)
+    
+    # Run the TCP server/client test
+    test_tcp_server_client()
     
     # Check if master port is in use
     master_port = int(os.environ['MASTER_PORT'])
