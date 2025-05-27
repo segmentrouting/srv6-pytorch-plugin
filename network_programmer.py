@@ -1,0 +1,122 @@
+import os
+import logging
+import requests
+from route_programmer import RouteProgrammerFactory
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class NetworkProgrammer:
+    def __init__(self, api_endpoint):
+        """Initialize with the network API endpoint"""
+        self.api_endpoint = api_endpoint
+        self.collection_name = os.environ.get('TOPOLOGY_COLLECTION', 'network_topology')
+        
+        # Initialize route programmer - default to Linux
+        platform = os.environ.get('ROUTE_PLATFORM', 'linux')
+        try:
+            self.route_programmer = RouteProgrammerFactory.get_programmer(platform)
+            logger.info(f"Initialized {platform} route programmer")
+        except Exception as e:
+            logger.error(f"Failed to initialize route programmer: {e}")
+            logger.warning("Route programming will be disabled")
+            self.route_programmer = None
+    
+    def get_route_info(self, source, destination):
+        """Get route information from the API"""
+        try:
+            logger.info(f"Calling network API for {source} -> {destination}")
+            response = requests.get(
+                f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
+                params={
+                    'source': source,
+                    'destination': destination,
+                    'direction': 'outbound'
+                }
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Network API call failed for {source} -> {destination}: {e}")
+            return None
+    
+    def program_route(self, destination, srv6_data, interface='eth1'):
+        """Program an SRv6 route"""
+        if not self.route_programmer:
+            logger.error("Route programmer not initialized, cannot program route")
+            return False
+        
+        # Convert destination IP to CIDR if it's not already
+        if '/' not in destination:
+            destination = f"{destination}/32"
+        
+        try:
+            # Program the route
+            success, message = self.route_programmer.program_route(
+                destination_prefix=destination,
+                srv6_usid=srv6_data['srv6_usid'],
+                outbound_interface=interface,
+                table_id=int(os.environ.get('ROUTE_TABLE_ID', '254'))
+            )
+            
+            if success:
+                logger.info(f"Route programming successful: {message}")
+            else:
+                logger.error(f"Route programming failed: {message}")
+            
+            return success
+        except Exception as e:
+            logger.error(f"Exception during route programming: {e}")
+            return False
+    
+    def program_all_routes(self, nodes):
+        """Program routes for all node pairs"""
+        if not self.route_programmer:
+            logger.error("Route programmer not initialized, cannot program routes")
+            return False
+        
+        # Generate all possible source/destination pairs
+        all_pairs = []
+        for i in range(len(nodes)):
+            for j in range(len(nodes)):
+                if i != j:  # Skip self-pairs
+                    all_pairs.append({
+                        'source': f"hosts/{nodes[i]['hostname']}",
+                        'destination': f"hosts/{nodes[j]['hostname']}"
+                    })
+        
+        logger.info(f"Generated source/destination pairs: {all_pairs}")
+        
+        # Get route information for each pair
+        route_info = {}
+        for pair in all_pairs:
+            api_response = self.get_route_info(pair['source'], pair['destination'])
+            if api_response and api_response.get('found'):
+                route_info[f"{pair['source']}_{pair['destination']}"] = api_response
+        
+        # Program routes for current node
+        current_host = f"hosts/clab-sonic-host{int(os.environ.get('RANK', '0')):02d}"
+        logger.info(f"Programming routes for {current_host}")
+        
+        for pair_key, api_response in route_info.items():
+            source, destination = pair_key.split('_')
+            if source == current_host and api_response.get('found'):
+                srv6_data = api_response.get('srv6_data', {})
+                if srv6_data:
+                    # Extract destination network from the destination host
+                    dest_hostname = destination.split('/')[-1]
+                    dest_num = int(dest_hostname.split('-')[-1])
+                    dest_ip = f"2001:db8:100{dest_num}::/64"
+                    
+                    try:
+                        logger.info(f"Programming route to {destination} ({dest_ip})")
+                        self.program_route(
+                            destination=dest_ip,
+                            srv6_data=srv6_data,
+                            interface=os.environ.get('BACKEND_INTERFACE', 'eth1')
+                        )
+                    except Exception as e:
+                        logger.error(f"Error programming route to {destination}: {e}")
+        
+        return True 
