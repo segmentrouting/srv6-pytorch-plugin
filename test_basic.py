@@ -85,24 +85,20 @@ def main():
             # For now, we'll use a placeholder IPv6 address
             dest_ip = "2001:db8:1002::"  # This should come from the API
             
-            route_info = {
-                'destination': f"{dest_ip}/64",  # Add prefix length
-                'next_hop': srv6_data.get('srv6_usid', 'N/A'),
-                'segment_list': [srv6_data.get('srv6_usid', 'N/A')],
-                'interface': os.environ['BACKEND_INTERFACE'],
-                'table_id': os.environ.get('ROUTE_TABLE_ID', '254')
-            }
-            
             # Always print the route information
-            print_route_info(route_info['destination'], route_info, route_info['interface'], route_info['table_id'])
-            
+            print_route_info(
+                destination=f"{dest_ip}/64",
+                srv6_data=srv6_data,
+                interface=os.environ['BACKEND_INTERFACE'],
+                table_id=os.environ.get('ROUTE_TABLE_ID', '254')
+            )
             
             # Try to program the route if route programmer is available
             if net_dist.route_programmer:
                 try:
                     net_dist.program_srv6_route(
-                        destination=route_info['destination'],
-                        sid_list=route_info['segment_list']
+                        destination=f"{dest_ip}/64",
+                        sid_list=[srv6_data['srv6_usid']]
                     )
                 except Exception as e:
                     print(f"\nWarning: Route programming failed: {str(e)}")
