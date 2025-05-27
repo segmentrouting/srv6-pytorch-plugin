@@ -6,22 +6,18 @@ from network_optimized_distributed import NetworkOptimizedDistributed
 # Load environment variables
 load_dotenv()
 
-def print_route_info(route_data):
-    """Print formatted SRv6 route information."""
+def print_route_info(destination, srv6_data, interface, table_id=254):
+    """Print formatted route information"""
     print("\nSRv6 Route Information:")
     print("-" * 50)
-    print(f"Destination: {route_data.get('destination', 'N/A')}")
-    print(f"Next Hop: {route_data.get('next_hop', 'N/A')}")
-    print(f"Segment List: {route_data.get('segment_list', [])}")
-    print(f"Interface: {route_data.get('interface', 'N/A')}")
-    print(f"Table ID: {route_data.get('table_id', 'N/A')}")
+    print(f"Destination: {destination}")
+    print(f"Next Hop: {srv6_data['srv6_usid']}")
+    print(f"uSID: {srv6_data['srv6_usid']}")
+    print(f"Interface: {interface}")
+    print(f"Table ID: {table_id}")
     print("-" * 50)
-    
-    # Print the equivalent ip route command
-    if route_data.get('segment_list'):
-        segments = ','.join(route_data['segment_list'])
-        print("\nEquivalent ip route command:")
-        print(f"ip -6 route add {route_data['destination']} encap seg6 mode encap segs {segments} dev {route_data['interface']} table {route_data['table_id']}")
+    print("\nEquivalent ip route command:")
+    print(f"ip -6 route add {destination} encap seg6 mode encap segs {srv6_data['srv6_usid']} dev {interface} table {table_id}")
 
 def main():
     # Set environment variables for distributed setup
@@ -70,7 +66,16 @@ def main():
         # Get and print route information
         route_info = net_dist.get_route_info()
         if route_info:
-            print_route_info(route_info)
+            # Extract SRv6 information from the path
+            srv6_data = route_info.get('srv6_data', {})
+            dest_ip = route_info.get('destination', '2001:db8:1002::/64')
+            
+            print_route_info(
+                destination=dest_ip,
+                srv6_data=srv6_data,
+                interface=os.environ['BACKEND_INTERFACE'],
+                table_id=os.environ.get('ROUTE_TABLE_ID', '254')
+            )
         else:
             print("\nNo route information available. Check API connection and topology collection.")
         
