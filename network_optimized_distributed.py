@@ -101,6 +101,12 @@ class NetworkOptimizedDistributed:
         world_size = int(os.environ.get('WORLD_SIZE', '1'))
         master_addr = os.environ.get('MASTER_ADDR', 'localhost')
         
+        logger.info(f"Initializing distributed process group:")
+        logger.info(f"  Rank: {rank}")
+        logger.info(f"  World Size: {world_size}")
+        logger.info(f"  Master Address: {master_addr}")
+        logger.info(f"  Backend: {backend}")
+        
         # Get local IP address
         node_info = self.get_network_interfaces()
         local_ip = None
@@ -116,8 +122,16 @@ class NetworkOptimizedDistributed:
             local_ip = list(node_info["interfaces"].values())[0]  # Use first available
             logger.warning(f"Using {local_ip} as fallback")
         
+        logger.info(f"Local IP address: {local_ip}")
+        
         # Initialize PyTorch distributed first so we can use it for gathering node info
-        dist.init_process_group(backend=backend, **kwargs)
+        logger.info("Calling torch.distributed.init_process_group...")
+        try:
+            dist.init_process_group(backend=backend, **kwargs)
+            logger.info("PyTorch distributed initialization successful")
+        except Exception as e:
+            logger.error(f"Failed to initialize PyTorch distributed: {e}")
+            raise
         
         # Each rank prepares its node information
         node_info = {
@@ -126,11 +140,14 @@ class NetworkOptimizedDistributed:
             'rank': rank
         }
         
+        logger.info(f"Preparing node information: {node_info}")
+        
         # Convert node info to tensor for all_gather
         node_info_tensor = torch.tensor(bytearray(json.dumps(node_info).encode()))
         node_info_size = torch.tensor([len(node_info_tensor)])
         
         # Gather sizes from all ranks
+        logger.info("Gathering node information sizes...")
         size_list = [torch.zeros_like(node_info_size) for _ in range(world_size)]
         dist.all_gather(size_list, node_info_size)
         
@@ -140,6 +157,7 @@ class NetworkOptimizedDistributed:
         padded_tensor[:len(node_info_tensor)] = node_info_tensor
         
         # Gather all node information
+        logger.info("Gathering node information from all ranks...")
         gathered_tensors = [torch.zeros_like(padded_tensor) for _ in range(world_size)]
         dist.all_gather(gathered_tensors, padded_tensor)
         
@@ -152,6 +170,7 @@ class NetworkOptimizedDistributed:
         
         # Sort nodes by rank to ensure consistent order
         all_nodes.sort(key=lambda x: x['rank'])
+        logger.info(f"Gathered node information: {all_nodes}")
         
         # Only rank 0 makes API calls
         if rank == 0:
@@ -164,6 +183,8 @@ class NetworkOptimizedDistributed:
                             'source': f"hosts/{all_nodes[i]['hostname']}",
                             'destination': f"hosts/{all_nodes[j]['hostname']}"
                         })
+            
+            logger.info(f"Generated source/destination pairs: {all_pairs}")
             
             # Store all API responses
             self.all_api_responses = {}
@@ -199,6 +220,7 @@ class NetworkOptimizedDistributed:
             # Convert API responses to bytes for broadcasting
             api_responses_bytes = json.dumps(self.all_api_responses).encode() if self.all_api_responses else b''
             api_responses_size = len(api_responses_bytes)
+            logger.info(f"Broadcasting API responses (size: {api_responses_size} bytes)")
         else:
             api_responses_bytes = None
             api_responses_size = None
@@ -208,6 +230,7 @@ class NetworkOptimizedDistributed:
             size_tensor = torch.tensor([api_responses_size if api_responses_size is not None else 0], dtype=torch.long)
             dist.broadcast(size_tensor, src=0)
             api_responses_size = size_tensor.item()
+            logger.info(f"Broadcast size: {api_responses_size}")
             
             # Allocate buffer for receiving
             if rank != 0:
@@ -215,11 +238,13 @@ class NetworkOptimizedDistributed:
             
             # Broadcast the actual data
             if api_responses_size > 0:
+                logger.info("Broadcasting API response data...")
                 dist.broadcast_object_list([api_responses_bytes], src=0)
                 
                 # Convert back to dictionary
                 if rank != 0:
                     self.all_api_responses = json.loads(api_responses_bytes.decode()) if api_responses_bytes else {}
+                    logger.info(f"Received API responses: {self.all_api_responses}")
             else:
                 if rank != 0:
                     self.all_api_responses = {}
@@ -232,6 +257,8 @@ class NetworkOptimizedDistributed:
         # After initialization, program the routes for this rank
         # Each rank programs routes where it is the source
         current_host = f"hosts/{node_info['hostname']}"
+        logger.info(f"Programming routes for {current_host}")
+        
         for pair_key, api_response in self.all_api_responses.items():
             if api_response and api_response.get('found'):
                 source, destination = pair_key.split('_')
@@ -244,6 +271,7 @@ class NetworkOptimizedDistributed:
                         dest_ip = f"2001:db8:100{dest_num}::/64"
                         
                         try:
+                            logger.info(f"Programming route to {destination} ({dest_ip})")
                             self.program_srv6_route(
                                 destination=dest_ip,
                                 sid_list=[srv6_data['srv6_usid']]
