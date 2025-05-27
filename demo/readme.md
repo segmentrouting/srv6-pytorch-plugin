@@ -81,3 +81,44 @@ docker cp network_optimized_distributed.py clab-sonic-host01:/app/
 # For host03
 docker cp demo/test_plugin.py clab-sonic-host03:/app/
 docker cp network_optimized_distributed.py clab-sonic-host03:/app/
+
+
+
+
+
+docker cp demo/test_plugin.py clab-sonic-host00:/app/
+docker cp net_dist.py clab-sonic-host00:/app/
+
+docker cp demo/test_plugin.py clab-sonic-host01:/app/
+docker cp net_dist.py clab-sonic-host01:/app/
+
+docker cp demo/test_plugin.py clab-sonic-host03:/app/
+docker cp net_dist.py clab-sonic-host03:/app/
+
+
+
+This new structure gives us:
+Simple Demo Interface:
+Users just need to create a DemoPlugin instance and call init_process_group()
+All the complexity is hidden behind a simple interface
+Clean Separation of Concerns:
+dist_setup.py handles PyTorch distributed initialization
+network_programmer.py handles route programming
+demo_plugin.py combines them in a user-friendly way
+Easy Path to Plugin:
+The code is already structured in a way that will make it easy to convert to a proper plugin
+We can later add proper packaging, documentation, and a more polished API
+To test this new setup:
+First, start host00 (master):
+Apply to test_dist.py
+Run
+"
+Then, in a separate terminal, start host01:
+Apply to test_dist.py
+Run
+"
+Finally, start host03:
+Apply to test_dist.py
+Run
+"
+Would you like to try this simplified approach? We can make adjustments as needed while keeping the code structured for future plugin development.
