@@ -11,7 +11,8 @@ load_dotenv()
 def test_tcp_connectivity(host, port, timeout=5):
     """Test TCP connectivity to a host:port"""
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Create IPv6 socket
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         result = sock.connect_ex((host, port))
         sock.close()
@@ -41,11 +42,11 @@ def main():
     # Get the master IP address based on rank
     rank = int(os.environ['RANK'])
     if rank == 0:
-        master_ip = '172.20.6.224'  # host00 IP
+        master_ip = '2001:db8:1000::2'  # host00 IPv6
     elif rank == 1:
-        master_ip = '172.20.6.225'  # host01 IP
+        master_ip = '2001:db8:1001::2'  # host01 IPv6
     else:
-        master_ip = '172.20.6.227'  # host03 IP
+        master_ip = '2001:db8:1003::2'  # host03 IPv6
     
     os.environ['MASTER_ADDR'] = master_ip
     os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29500')

@@ -136,9 +136,17 @@ class NetworkOptimizedDistributed:
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
         try:
+            # Format the init_method URL based on whether master_addr is IPv6
+            if ':' in master_addr:  # IPv6 address
+                init_method = f"tcp://[{master_addr}]:{os.environ.get('MASTER_PORT', '29500')}"
+            else:  # IPv4 address
+                init_method = f"tcp://{master_addr}:{os.environ.get('MASTER_PORT', '29500')}"
+            
+            logger.info(f"Using init_method: {init_method}")
+            
             dist.init_process_group(
                 backend=backend,
-                init_method=f"tcp://[{master_addr}]:{os.environ.get('MASTER_PORT', '29500')}",  # IPv6 format
+                init_method=init_method,
                 world_size=world_size,
                 rank=rank,
                 timeout=datetime.timedelta(seconds=30)  # Add timeout
