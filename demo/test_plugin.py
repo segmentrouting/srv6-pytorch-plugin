@@ -23,28 +23,34 @@ def main():
     # Set environment variables for distributed setup
     os.environ['RANK'] = os.getenv('RANK', '0')
     os.environ['WORLD_SIZE'] = os.getenv('WORLD_SIZE', '3')  # Using 3 hosts
-    os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'clab-sonic-host00')
+    
+    # Get the master IP address based on rank
+    rank = int(os.environ['RANK'])
+    if rank == 0:
+        master_ip = '172.20.6.224'  # host00 IP
+    elif rank == 1:
+        master_ip = '172.20.6.225'  # host01 IP
+    else:
+        master_ip = '172.20.6.227'  # host03 IP
+    
+    os.environ['MASTER_ADDR'] = master_ip
     os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29500')
     os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth1')
     os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
     
     # Set test source and destination based on rank
-    rank = int(os.environ['RANK'])
     if rank == 0:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host00'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host01'
         ping_destination = '2001:db8:1001:0::2'  # host-1 IPv6
-        dest_ip = '2001:db8:1001::/64'  # host-1 network
     elif rank == 1:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host01'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host03'
         ping_destination = '2001:db8:1003:0::2'  # host-3 IPv6
-        dest_ip = '2001:db8:1003::/64'  # host-3 network
     else:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host03'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host00'
         ping_destination = '2001:db8:1000:0::2'  # host-0 IPv6
-        dest_ip = '2001:db8:1000::/64'  # host-0 network
     
     # Initialize the plugin with API endpoint from .env
     net_dist = NetworkOptimizedDistributed(
@@ -104,6 +110,8 @@ def main():
         print("2. Check API endpoint connectivity")
         print("3. Verify interface name is correct")
         print("4. Check containerlab network connectivity")
+        print("5. Verify all nodes can reach the master IP address")
+        print("6. Check if the master port is available and not blocked")
 
 if __name__ == "__main__":
     main()

@@ -121,7 +121,7 @@ class NetworkOptimizedDistributed:
         
         # Each rank prepares its node information
         node_info = {
-            'hostname': socket.gethostname(),
+            'hostname': f"clab-sonic-host{rank:02d}",
             'ip_address': local_ip,
             'rank': rank
         }
@@ -203,19 +203,31 @@ class NetworkOptimizedDistributed:
             api_responses_bytes = None
             api_responses_size = None
         
-        # Broadcast the size first
-        api_responses_size = dist.broadcast(torch.tensor([api_responses_size]), src=0)[0].item()
-        
-        # Allocate buffer for receiving
-        if rank != 0:
-            api_responses_bytes = bytearray(api_responses_size)
-        
-        # Broadcast the actual data
-        dist.broadcast_object_list([api_responses_bytes], src=0)
-        
-        # Convert back to dictionary
-        if rank != 0:
-            self.all_api_responses = json.loads(api_responses_bytes.decode()) if api_responses_bytes else {}
+        try:
+            # Broadcast the size first
+            size_tensor = torch.tensor([api_responses_size if api_responses_size is not None else 0], dtype=torch.long)
+            dist.broadcast(size_tensor, src=0)
+            api_responses_size = size_tensor.item()
+            
+            # Allocate buffer for receiving
+            if rank != 0:
+                api_responses_bytes = bytearray(api_responses_size)
+            
+            # Broadcast the actual data
+            if api_responses_size > 0:
+                dist.broadcast_object_list([api_responses_bytes], src=0)
+                
+                # Convert back to dictionary
+                if rank != 0:
+                    self.all_api_responses = json.loads(api_responses_bytes.decode()) if api_responses_bytes else {}
+            else:
+                if rank != 0:
+                    self.all_api_responses = {}
+                
+        except Exception as e:
+            logger.error(f"Error during API response broadcast: {e}")
+            if rank != 0:
+                self.all_api_responses = {}
         
         # After initialization, program the routes for this rank
         # Each rank programs routes where it is the source
@@ -231,10 +243,13 @@ class NetworkOptimizedDistributed:
                         dest_num = int(dest_hostname.split('-')[-1])
                         dest_ip = f"2001:db8:100{dest_num}::/64"
                         
-                        self.program_srv6_route(
-                            destination=dest_ip,
-                            sid_list=[srv6_data['srv6_usid']]
-                        )
+                        try:
+                            self.program_srv6_route(
+                                destination=dest_ip,
+                                sid_list=[srv6_data['srv6_usid']]
+                            )
+                        except Exception as e:
+                            logger.error(f"Error programming route to {destination}: {e}")
         
         logger.info(f"Distributed initialization complete for rank {rank}")
         return True 
