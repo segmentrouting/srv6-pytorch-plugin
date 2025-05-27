@@ -80,14 +80,19 @@ def test_tcp_server_client():
             server.listen(1)
             print(f"Server listening on port {master_port}")
             
-            # Wait for a short time to see if clients connect
-            server.settimeout(5)
+            # Wait for connections from all clients
+            server.settimeout(10)  # Increased timeout
+            connections = []
             try:
-                client, addr = server.accept()
-                print(f"Received connection from {addr}")
-                client.close()
+                while len(connections) < 2:  # Wait for both clients
+                    client, addr = server.accept()
+                    print(f"Received connection from {addr}")
+                    connections.append(client)
             except socket.timeout:
-                print("No clients connected within timeout")
+                print(f"Timeout waiting for clients. Received {len(connections)} connections")
+            finally:
+                for conn in connections:
+                    conn.close()
         except Exception as e:
             print(f"Server error: {e}")
         finally:
@@ -100,6 +105,8 @@ def test_tcp_server_client():
             print(f"Attempting to connect to {master_addr}:{master_port}")
             client.connect((master_addr, master_port))
             print("Successfully connected to server")
+            # Keep connection open for a short time
+            time.sleep(2)
         except Exception as e:
             print(f"Client error: {e}")
         finally:

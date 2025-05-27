@@ -151,6 +151,9 @@ class NetworkOptimizedDistributed:
         
         # Additional Gloo backend settings
         os.environ['GLOO_SOCKET_FAMILY'] = 'AF_INET6'  # Use IPv6
+        os.environ['GLOO_DEVICE_TRANSPORT'] = 'tcp'  # Use TCP transport
+        os.environ['GLOO_SOCKET_TIMEOUT'] = '30000'  # 30 second timeout
+        os.environ['GLOO_SOCKET_RETRY'] = '3'  # Number of retries
         
         # Log all relevant environment variables
         logger.info("Distributed environment variables:")
@@ -158,6 +161,9 @@ class NetworkOptimizedDistributed:
         logger.info(f"  NCCL_SOCKET_IFNAME: {os.environ.get('NCCL_SOCKET_IFNAME')}")
         logger.info(f"  GLOO_SOCKET_IFNAME: {os.environ.get('GLOO_SOCKET_IFNAME')}")
         logger.info(f"  GLOO_SOCKET_FAMILY: {os.environ.get('GLOO_SOCKET_FAMILY')}")
+        logger.info(f"  GLOO_DEVICE_TRANSPORT: {os.environ.get('GLOO_DEVICE_TRANSPORT')}")
+        logger.info(f"  GLOO_SOCKET_TIMEOUT: {os.environ.get('GLOO_SOCKET_TIMEOUT')}")
+        logger.info(f"  GLOO_SOCKET_RETRY: {os.environ.get('GLOO_SOCKET_RETRY')}")
         
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
@@ -176,7 +182,7 @@ class NetworkOptimizedDistributed:
                 'init_method': init_method,
                 'world_size': world_size,
                 'rank': rank,
-                'timeout': datetime.timedelta(seconds=30)
+                'timeout': datetime.timedelta(seconds=60)  # Increased timeout
             }
             logger.info(f"init_process_group parameters: {init_params}")
             
