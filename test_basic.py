@@ -83,11 +83,11 @@ def main():
         if api_response.get('found'):
             # Extract SRv6 information from the path
             srv6_data = api_response.get('srv6_data', {})
-            
+            print(f"\nSRv6 Data: {srv6_data}")
             # Get the destination IP from the API response
             # In a real environment, this would come from the API
             # For now, we'll use a placeholder IPv6 address
-            dest_ip = "2001:db8:1002::2"  # This should come from the API
+            dest_ip = "2001:db8:1002::"  # This should come from the API
             
             route_info = {
                 'destination': f"{dest_ip}/64",  # Add prefix length
@@ -99,6 +99,7 @@ def main():
             
             # Always print the route information
             print_route_info(route_info)
+            
             
             # Try to program the route if route programmer is available
             if net_dist.route_programmer:

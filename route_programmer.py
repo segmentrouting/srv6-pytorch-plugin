@@ -41,20 +41,19 @@ class LinuxRouteProgrammer(RouteProgrammer):
             except ValueError as e:
                 raise ValueError(f"Invalid destination prefix: {e}")
 
-            # Validate and normalize the SRv6 USID
+            # Validate the SRv6 USID
             try:
-                expanded_usid = self._expand_srv6_usid(srv6_usid)
-                ipaddress.IPv6Address(expanded_usid)
+                ipaddress.IPv6Address(srv6_usid)
             except ValueError as e:
                 raise ValueError(f"Invalid SRv6 USID: {e}")
             
             # Get interface index
             if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
             
-            # Create encap info using the uSID
+            # Create encap info using the uSID directly
             encap = {'type': 'seg6',
                     'mode': 'encap',
-                    'segs': [expanded_usid]}
+                    'segs': [srv6_usid]}
             
             # Try to delete existing route first
             try:
@@ -73,7 +72,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
                              oif=if_index,
                              encap=encap)
             
-            return True, f"Route to {destination_prefix} via {expanded_usid} programmed successfully in table {table_id}"
+            return True, f"Route to {destination_prefix} via {srv6_usid} programmed successfully in table {table_id}"
         except Exception as e:
             return False, f"Failed to program route: {str(e)}"
         
