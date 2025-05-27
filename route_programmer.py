@@ -48,7 +48,10 @@ class LinuxRouteProgrammer(RouteProgrammer):
                 raise ValueError(f"Invalid SRv6 USID: {e}")
             
             # Get interface index
-            if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
+            try:
+                if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
+            except IndexError:
+                raise ValueError(f"Interface {kwargs.get('outbound_interface')} not found")
             
             # Create encap info using the uSID directly
             encap = {'type': 'seg6',

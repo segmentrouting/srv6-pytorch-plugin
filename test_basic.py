@@ -13,22 +13,18 @@ load_dotenv()
 def timeout_handler(signum, frame):
     raise TimeoutError("Operation timed out")
 
-def print_route_info(route_data):
-    """Print formatted SRv6 route information."""
+def print_route_info(destination, srv6_data, interface, table_id=254):
+    """Print formatted route information"""
     print("\nSRv6 Route Information:")
     print("-" * 50)
-    print(f"Destination: {route_data.get('destination', 'N/A')}")
-    print(f"Next Hop: {route_data.get('next_hop', 'N/A')}")
-    print(f"Segment List: {route_data.get('segment_list', [])}")
-    print(f"Interface: {route_data.get('interface', 'N/A')}")
-    print(f"Table ID: {route_data.get('table_id', 'N/A')}")
+    print(f"Destination: {destination}")
+    print(f"Next Hop: {srv6_data['srv6_usid']}")
+    print(f"uSID: {srv6_data['srv6_usid']}")
+    print(f"Interface: {interface}")
+    print(f"Table ID: {table_id}")
     print("-" * 50)
-    
-    # Print the equivalent ip route command
-    if route_data.get('segment_list'):
-        segments = ','.join(route_data['segment_list'])
-        print("\nEquivalent ip route command:")
-        print(f"ip -6 route add {route_data['destination']} encap seg6 mode encap segs {segments} dev {route_data['interface']} table {route_data['table_id']}")
+    print("\nEquivalent ip route command:")
+    print(f"ip -6 route add {destination} encap seg6 mode encap segs {srv6_data['srv6_usid']} dev {interface} table {table_id}")
 
 def main():
     # Set required environment variables
@@ -91,14 +87,14 @@ def main():
             
             route_info = {
                 'destination': f"{dest_ip}/64",  # Add prefix length
-                'next_hop': srv6_data.get('srv6_sid_list', [])[0] if srv6_data.get('srv6_sid_list') else 'N/A',
-                'segment_list': srv6_data.get('srv6_sid_list', []),
+                'next_hop': srv6_data.get('srv6_usid', 'N/A'),
+                'segment_list': [srv6_data.get('srv6_usid', 'N/A')],
                 'interface': os.environ['BACKEND_INTERFACE'],
                 'table_id': os.environ.get('ROUTE_TABLE_ID', '254')
             }
             
             # Always print the route information
-            print_route_info(route_info)
+            print_route_info(route_info['destination'], route_info, route_info['interface'], route_info['table_id'])
             
             
             # Try to program the route if route programmer is available
