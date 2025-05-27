@@ -15,7 +15,6 @@ TOPOLOGY_COLLECTION=your-collection-name
 
 1. Build the container image
 ```
-cd ..
 docker build -t pytorch-srv6-demo:latest -f demo/Dockerfile .
 ```
 

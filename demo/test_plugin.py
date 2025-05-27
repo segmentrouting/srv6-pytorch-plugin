@@ -34,14 +34,17 @@ def main():
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host00'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host01'
         ping_destination = '2001:db8:1001:0::2'  # host-1 IPv6
+        dest_ip = '2001:db8:1001::/64'  # host-1 network
     elif rank == 1:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host01'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host03'
         ping_destination = '2001:db8:1003:0::2'  # host-3 IPv6
+        dest_ip = '2001:db8:1003::/64'  # host-3 network
     else:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host03'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host00'
         ping_destination = '2001:db8:1000:0::2'  # host-0 IPv6
+        dest_ip = '2001:db8:1000::/64'  # host-0 network
     
     # Initialize the plugin with API endpoint from .env
     net_dist = NetworkOptimizedDistributed(
@@ -58,24 +61,33 @@ def main():
     
     try:
         # Initialize distributed (this will get route information)
-        net_dist.init_process_group(backend='nccl')
+        #  net_dist.init_process_group(backend='nccl')
+        net_dist.init_process_group(backend='gloo')  # Using gloo backend for CPU testing
         
         # Wait for route information to be processed
         time.sleep(2)
         
-        # Get and print route information
-        route_info = net_dist.get_route_info()
-        if route_info:
-            # Extract SRv6 information from the path
-            srv6_data = route_info.get('srv6_data', {})
-            dest_ip = route_info.get('destination', '2001:db8:1002::/64')
+        # Get route information from the API responses
+        if hasattr(net_dist, 'all_api_responses'):
+            current_host = f"hosts/clab-sonic-host{rank:02d}"
+            print(f"\nRoute information for {current_host}:")
+            print("-" * 50)
             
-            print_route_info(
-                destination=dest_ip,
-                srv6_data=srv6_data,
-                interface=os.environ['BACKEND_INTERFACE'],
-                table_id=os.environ.get('ROUTE_TABLE_ID', '254')
-            )
+            for pair_key, api_response in net_dist.all_api_responses.items():
+                if api_response and api_response.get('found'):
+                    source, destination = pair_key.split('_')
+                    if source == current_host:
+                        # Extract destination network from the destination host
+                        dest_num = int(destination.split('-')[-1])
+                        dest_ip = f"2001:db8:100{dest_num}::/64"
+                        
+                        print(f"\nRoute to {destination}:")
+                        print_route_info(
+                            destination=dest_ip,
+                            srv6_data=api_response.get('srv6_data', {}),
+                            interface=os.environ['BACKEND_INTERFACE'],
+                            table_id=os.environ.get('ROUTE_TABLE_ID', '254')
+                        )
         else:
             print("\nNo route information available. Check API connection and topology collection.")
         

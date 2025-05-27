@@ -6,6 +6,7 @@ import torch.distributed as dist
 import netifaces
 import logging
 from route_programmer import RouteProgrammerFactory
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,7 @@ class NetworkOptimizedDistributed:
         self.initialized = False
         self.job_id = os.environ.get('JOB_ID', f"pytorch_job_{os.getpid()}")
         self.collection_name = os.environ.get('TOPOLOGY_COLLECTION', 'network_topology')
+        self.last_api_response = None  # Store the last API response
         
         # Initialize route programmer - default to Linux
         platform = os.environ.get('ROUTE_PLATFORM', 'linux')
@@ -114,61 +116,67 @@ class NetworkOptimizedDistributed:
             local_ip = list(node_info["interfaces"].values())[0]  # Use first available
             logger.warning(f"Using {local_ip} as fallback")
         
-        # Only rank 0 collects information and calls the API
+        # Initialize PyTorch distributed first so we can use it for gathering node info
+        dist.init_process_group(backend=backend, **kwargs)
+        
+        # Each rank prepares its node information
+        node_info = {
+            'hostname': socket.gethostname(),
+            'ip_address': local_ip,
+            'rank': rank
+        }
+        
+        # Convert node info to tensor for all_gather
+        node_info_tensor = torch.tensor(bytearray(json.dumps(node_info).encode()))
+        node_info_size = torch.tensor([len(node_info_tensor)])
+        
+        # Gather sizes from all ranks
+        size_list = [torch.zeros_like(node_info_size) for _ in range(world_size)]
+        dist.all_gather(size_list, node_info_size)
+        
+        # Calculate max size and pad tensors
+        max_size = max(size.item() for size in size_list)
+        padded_tensor = torch.zeros(max_size, dtype=torch.uint8)
+        padded_tensor[:len(node_info_tensor)] = node_info_tensor
+        
+        # Gather all node information
+        gathered_tensors = [torch.zeros_like(padded_tensor) for _ in range(world_size)]
+        dist.all_gather(gathered_tensors, padded_tensor)
+        
+        # Convert gathered tensors back to node info
+        all_nodes = []
+        for tensor, size in zip(gathered_tensors, size_list):
+            node_info_bytes = tensor[:size.item()].tolist()
+            node_info_str = bytes(node_info_bytes).decode()
+            all_nodes.append(json.loads(node_info_str))
+        
+        # Sort nodes by rank to ensure consistent order
+        all_nodes.sort(key=lambda x: x['rank'])
+        
+        # Only rank 0 makes API calls
         if rank == 0:
-            # In a real setup, we would collect information from all nodes
-            # For now, we'll simulate with just this node's info
-            gpu_nodes = []
+            # Generate all possible source/destination pairs
+            all_pairs = []
+            for i in range(world_size):
+                for j in range(world_size):
+                    if i != j:  # Skip self-pairs
+                        all_pairs.append({
+                            'source': f"hosts/{all_nodes[i]['hostname']}",
+                            'destination': f"hosts/{all_nodes[j]['hostname']}"
+                        })
             
-            # In a real setup, you would gather this information from all nodes
-            # For testing, we'll create dummy entries for all ranks
-            for r in range(world_size):
-                # For rank 0, use our actual information
-                if r == 0:
-                    gpu_nodes.append({
-                        "hostname": node_info["hostname"],
-                        "ip_address": local_ip,
-                        "rank": r,
-                        "gpu_id": 0  # Assuming one GPU per process for simplicity
-                    })
-                else:
-                    # For other ranks, create dummy entries
-                    # In a real setup, you would gather this information
-                    last_octet = 10 + r  # Simple IP generation for testing
-                    ip_parts = local_ip.split('.')
-                    ip_parts[-1] = str(last_octet)
-                    dummy_ip = '.'.join(ip_parts)
-                    
-                    gpu_nodes.append({
-                        "hostname": f"node-{r}",
-                        "ip_address": dummy_ip,
-                        "rank": r,
-                        "gpu_id": 0
-                    })
+            # Store all API responses
+            self.all_api_responses = {}
             
-            # Prepare payload for API
-            payload = {
-                "job_id": self.job_id,
-                "world_size": world_size,
-                "master_addr": master_addr,
-                "collection_name": self.collection_name,
-                "gpu_nodes": gpu_nodes,
-                "direction": "outbound"
-            }
-            
-            # Call the network API
-            try:
-                logger.info(f"Calling network API to optimize NCCL paths")
-                # Use test source and destination if provided
-                test_source = os.environ.get('TEST_SOURCE')
-                test_dest = os.environ.get('TEST_DESTINATION')
-                
-                if test_source and test_dest:
+            # Call the network API for each pair
+            for pair in all_pairs:
+                try:
+                    logger.info(f"Calling network API for {pair['source']} -> {pair['destination']}")
                     response = requests.get(
                         f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
                         params={
-                            'source': test_source,
-                            'destination': test_dest,
+                            'source': pair['source'],
+                            'destination': pair['destination'],
                             'direction': 'outbound'
                         }
                     )
@@ -176,53 +184,57 @@ class NetworkOptimizedDistributed:
                     
                     # Process the response
                     api_response = response.json()
-                    logger.info(f"Network API response: {api_response}")
+                    logger.info(f"Network API response for {pair['source']} -> {pair['destination']}: {api_response}")
                     
-                    # Store the paths for distribution to other ranks
-                    self.optimized_paths = api_response.get("paths", [])
-                else:
-                    # Fall back to using the first non-local node as destination
-                    dest_node = gpu_nodes[1] if len(gpu_nodes) > 1 else None
+                    # Store the API response
+                    pair_key = f"{pair['source']}_{pair['destination']}"
+                    self.all_api_responses[pair_key] = api_response
                     
-                    if dest_node:
-                        response = requests.get(
-                            f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
-                            params={
-                                'source': f"hosts/{node_info['hostname']}",
-                                'destination': f"hosts/{dest_node['hostname']}",
-                                'direction': 'outbound'
-                            }
+                except Exception as e:
+                    logger.error(f"Warning: Network API call failed for {pair['source']} -> {pair['destination']}: {e}")
+                    self.all_api_responses[pair_key] = None
+        
+        # Broadcast the API responses to all ranks
+        if rank == 0:
+            # Convert API responses to bytes for broadcasting
+            api_responses_bytes = json.dumps(self.all_api_responses).encode() if self.all_api_responses else b''
+            api_responses_size = len(api_responses_bytes)
+        else:
+            api_responses_bytes = None
+            api_responses_size = None
+        
+        # Broadcast the size first
+        api_responses_size = dist.broadcast(torch.tensor([api_responses_size]), src=0)[0].item()
+        
+        # Allocate buffer for receiving
+        if rank != 0:
+            api_responses_bytes = bytearray(api_responses_size)
+        
+        # Broadcast the actual data
+        dist.broadcast_object_list([api_responses_bytes], src=0)
+        
+        # Convert back to dictionary
+        if rank != 0:
+            self.all_api_responses = json.loads(api_responses_bytes.decode()) if api_responses_bytes else {}
+        
+        # After initialization, program the routes for this rank
+        # Each rank programs routes where it is the source
+        current_host = f"hosts/{node_info['hostname']}"
+        for pair_key, api_response in self.all_api_responses.items():
+            if api_response and api_response.get('found'):
+                source, destination = pair_key.split('_')
+                if source == current_host:
+                    srv6_data = api_response.get('srv6_data', {})
+                    if srv6_data:
+                        # Extract destination network from the destination host
+                        dest_hostname = destination.split('/')[-1]
+                        dest_num = int(dest_hostname.split('-')[-1])
+                        dest_ip = f"2001:db8:100{dest_num}::/64"
+                        
+                        self.program_srv6_route(
+                            destination=dest_ip,
+                            sid_list=[srv6_data['srv6_usid']]
                         )
-                        response.raise_for_status()
-                        
-                        # Process the response
-                        api_response = response.json()
-                        logger.info(f"Network API response: {api_response}")
-                        
-                        # Store the paths for distribution to other ranks
-                        self.optimized_paths = api_response.get("paths", [])
-                    else:
-                        logger.warning("No destination node available for path optimization")
-                        self.optimized_paths = []
-                
-            except Exception as e:
-                logger.error(f"Warning: Network API call failed: {e}")
-                self.optimized_paths = []
-        
-        # Initialize PyTorch distributed as normal
-        dist.init_process_group(backend=backend, **kwargs)
-        
-        # After initialization, program the routes
-        # In a real setup, rank 0 would distribute the paths to all ranks
-        # For now, we'll have rank 0 program all routes
-        if rank == 0 and hasattr(self, 'optimized_paths'):
-            for path in self.optimized_paths:
-                # Only program routes for paths where this node is the source
-                if path["source"] == local_ip:
-                    self.program_srv6_route(
-                        destination=path["destination"],
-                        sid_list=path["srv6_sid_list"]
-                    )
         
         logger.info(f"Distributed initialization complete for rank {rank}")
         return True 
