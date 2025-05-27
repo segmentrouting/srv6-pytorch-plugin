@@ -1,6 +1,7 @@
 import os
 import time
 import socket
+import netifaces
 from dotenv import load_dotenv
 from network_optimized_distributed import NetworkOptimizedDistributed
 
@@ -68,15 +69,29 @@ def main():
     print("-" * 50)
     master_port = int(os.environ['MASTER_PORT'])
     
+    # Get local IP address for the backend interface
+    backend_iface = os.environ['BACKEND_INTERFACE']
+    local_ip = None
+    for iface, addrs in netifaces.ifaddresses(backend_iface).items():
+        if netifaces.AF_INET in addrs:
+            local_ip = addrs[netifaces.AF_INET][0]['addr']
+            break
+    
+    if not local_ip:
+        print(f"Error: Could not determine IP address for {backend_iface}")
+        return
+    
+    print(f"Local IP on {backend_iface}: {local_ip}")
+    
     # Test connectivity to all nodes
     nodes = {
-        'host00': '172.20.6.224',
-        'host01': '172.20.6.225',
-        'host03': '172.20.6.227'
+        'host00': '2001:db8:1000:0::2',  # host00 IPv6
+        'host01': '2001:db8:1001:0::2',  # host01 IPv6
+        'host03': '2001:db8:1003:0::2'   # host03 IPv6
     }
     
     for node_name, node_ip in nodes.items():
-        if node_ip != master_ip:  # Don't test self
+        if node_ip != local_ip:  # Don't test self
             print(f"Testing connection to {node_name} ({node_ip}):{master_port}")
             if test_tcp_connectivity(node_ip, master_port):
                 print(f"✓ Successfully connected to {node_name}")

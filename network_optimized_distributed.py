@@ -7,6 +7,7 @@ import netifaces
 import logging
 from route_programmer import RouteProgrammerFactory
 import torch
+import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -100,17 +101,18 @@ class NetworkOptimizedDistributed:
         rank = int(os.environ.get('RANK', '0'))
         world_size = int(os.environ.get('WORLD_SIZE', '1'))
         master_addr = os.environ.get('MASTER_ADDR', 'localhost')
+        backend_iface = os.environ.get('BACKEND_INTERFACE', 'eth1')
         
         logger.info(f"Initializing distributed process group:")
         logger.info(f"  Rank: {rank}")
         logger.info(f"  World Size: {world_size}")
         logger.info(f"  Master Address: {master_addr}")
         logger.info(f"  Backend: {backend}")
+        logger.info(f"  Network Interface: {backend_iface}")
         
-        # Get local IP address
+        # Get local IP address for the backend interface
         node_info = self.get_network_interfaces()
         local_ip = None
-        backend_iface = os.environ.get('BACKEND_INTERFACE', 'eth1')
         
         for iface, ip in node_info["interfaces"].items():
             if iface == backend_iface:
@@ -118,16 +120,26 @@ class NetworkOptimizedDistributed:
                 break
         
         if not local_ip:
-            logger.warning(f"Could not determine local IP address for backend interface {backend_iface}")
-            local_ip = list(node_info["interfaces"].values())[0]  # Use first available
-            logger.warning(f"Using {local_ip} as fallback")
+            logger.error(f"Could not determine local IP address for backend interface {backend_iface}")
+            raise ValueError(f"Backend interface {backend_iface} not found or has no IP address")
         
-        logger.info(f"Local IP address: {local_ip}")
+        logger.info(f"Local IP address on {backend_iface}: {local_ip}")
+        
+        # Set environment variables for PyTorch distributed
+        os.environ['NCCL_IB_DISABLE'] = '1'  # Disable InfiniBand
+        os.environ['NCCL_SOCKET_IFNAME'] = backend_iface  # Set network interface
+        os.environ['GLOO_SOCKET_IFNAME'] = backend_iface  # Set network interface for Gloo backend
         
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
         try:
-            dist.init_process_group(backend=backend, **kwargs)
+            dist.init_process_group(
+                backend=backend,
+                init_method=f"tcp://{master_addr}:{os.environ.get('MASTER_PORT', '29500')}",
+                world_size=world_size,
+                rank=rank,
+                timeout=datetime.timedelta(seconds=30)  # Add timeout
+            )
             logger.info("PyTorch distributed initialization successful")
         except Exception as e:
             logger.error(f"Failed to initialize PyTorch distributed: {e}")
