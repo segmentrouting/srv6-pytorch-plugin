@@ -70,7 +70,7 @@ def main():
         master_ip = '2001:db8:1003::2'  # host03 IPv6
     
     os.environ['MASTER_ADDR'] = master_ip
-    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29500')
+    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29501')
     os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth1')
     os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
     

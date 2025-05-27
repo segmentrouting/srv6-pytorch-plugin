@@ -112,6 +112,11 @@ class NetworkOptimizedDistributed:
         logger.info(f"  Backend: {backend}")
         logger.info(f"  Network Interface: {backend_iface}")
         
+        # Check port status before initialization
+        if rank == 0:
+            logger.info("Checking port status before initialization:")
+            os.system("netstat -tuln | grep 29500")
+        
         # Get local IPv6 address for the backend interface
         node_info = self.get_network_interfaces()
         local_ip = None
@@ -165,6 +170,11 @@ class NetworkOptimizedDistributed:
             # Initialize the process group
             dist.init_process_group(**init_params)
             logger.info("PyTorch distributed initialization successful")
+            
+            # Check port status after initialization
+            if rank == 0:
+                logger.info("Checking port status after initialization:")
+                os.system("netstat -tuln | grep 29500")
             
             # Log the process group state
             logger.info("Process group state:")
