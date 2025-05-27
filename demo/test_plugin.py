@@ -72,22 +72,26 @@ def main():
     # Get local IP address for the backend interface
     backend_iface = os.environ['BACKEND_INTERFACE']
     local_ip = None
-    for iface, addrs in netifaces.ifaddresses(backend_iface).items():
-        if netifaces.AF_INET in addrs:
-            local_ip = addrs[netifaces.AF_INET][0]['addr']
-            break
+    
+    # Get IPv6 address from eth1
+    addrs = netifaces.ifaddresses(backend_iface)
+    if netifaces.AF_INET6 in addrs:
+        for addr in addrs[netifaces.AF_INET6]:
+            if 'addr' in addr and not addr['addr'].startswith('fe80::'):  # Skip link-local addresses
+                local_ip = addr['addr']
+                break
     
     if not local_ip:
-        print(f"Error: Could not determine IP address for {backend_iface}")
+        print(f"Error: Could not determine IPv6 address for {backend_iface}")
         return
     
-    print(f"Local IP on {backend_iface}: {local_ip}")
+    print(f"Local IPv6 on {backend_iface}: {local_ip}")
     
     # Test connectivity to all nodes
     nodes = {
-        'host00': '2001:db8:1000:0::2',  # host00 IPv6
-        'host01': '2001:db8:1001:0::2',  # host01 IPv6
-        'host03': '2001:db8:1003:0::2'   # host03 IPv6
+        'host00': '2001:db8:1000::2',  # host00 IPv6
+        'host01': '2001:db8:1001::2',  # host01 IPv6
+        'host03': '2001:db8:1003::2'   # host03 IPv6
     }
     
     for node_name, node_ip in nodes.items():
@@ -103,15 +107,15 @@ def main():
     if rank == 0:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host00'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host01'
-        ping_destination = '2001:db8:1001:0::2'  # host-1 IPv6
+        ping_destination = '2001:db8:1001::2'  # host-1 IPv6
     elif rank == 1:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host01'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host03'
-        ping_destination = '2001:db8:1003:0::2'  # host-3 IPv6
+        ping_destination = '2001:db8:1003::2'  # host-3 IPv6
     else:
         os.environ['TEST_SOURCE'] = 'hosts/clab-sonic-host03'
         os.environ['TEST_DESTINATION'] = 'hosts/clab-sonic-host00'
-        ping_destination = '2001:db8:1000:0::2'  # host-0 IPv6
+        ping_destination = '2001:db8:1000::2'  # host-0 IPv6
     
     print(f"\nTest Configuration:")
     print("-" * 50)

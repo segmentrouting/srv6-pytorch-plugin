@@ -110,20 +110,23 @@ class NetworkOptimizedDistributed:
         logger.info(f"  Backend: {backend}")
         logger.info(f"  Network Interface: {backend_iface}")
         
-        # Get local IP address for the backend interface
+        # Get local IPv6 address for the backend interface
         node_info = self.get_network_interfaces()
         local_ip = None
         
-        for iface, ip in node_info["interfaces"].items():
-            if iface == backend_iface:
-                local_ip = ip
-                break
+        # Get IPv6 address from the backend interface
+        addrs = netifaces.ifaddresses(backend_iface)
+        if netifaces.AF_INET6 in addrs:
+            for addr in addrs[netifaces.AF_INET6]:
+                if 'addr' in addr and not addr['addr'].startswith('fe80::'):  # Skip link-local addresses
+                    local_ip = addr['addr']
+                    break
         
         if not local_ip:
-            logger.error(f"Could not determine local IP address for backend interface {backend_iface}")
-            raise ValueError(f"Backend interface {backend_iface} not found or has no IP address")
+            logger.error(f"Could not determine IPv6 address for backend interface {backend_iface}")
+            raise ValueError(f"Backend interface {backend_iface} has no valid IPv6 address")
         
-        logger.info(f"Local IP address on {backend_iface}: {local_ip}")
+        logger.info(f"Local IPv6 address on {backend_iface}: {local_ip}")
         
         # Set environment variables for PyTorch distributed
         os.environ['NCCL_IB_DISABLE'] = '1'  # Disable InfiniBand
@@ -135,7 +138,7 @@ class NetworkOptimizedDistributed:
         try:
             dist.init_process_group(
                 backend=backend,
-                init_method=f"tcp://{master_addr}:{os.environ.get('MASTER_PORT', '29500')}",
+                init_method=f"tcp://[{master_addr}]:{os.environ.get('MASTER_PORT', '29500')}",  # IPv6 format
                 world_size=world_size,
                 rank=rank,
                 timeout=datetime.timedelta(seconds=30)  # Add timeout

@@ -69,3 +69,15 @@ Container clab-sonic-host01:
 - Check network connectivity between hosts
 - Verify SONiC switch configurations
 - Check Jalapeno API accessibility
+
+# For host00
+docker cp demo/test_plugin.py clab-sonic-host00:/app/
+docker cp network_optimized_distributed.py clab-sonic-host00:/app/
+
+# For host01
+docker cp demo/test_plugin.py clab-sonic-host01:/app/
+docker cp network_optimized_distributed.py clab-sonic-host01:/app/
+
+# For host03
+docker cp demo/test_plugin.py clab-sonic-host03:/app/
+docker cp network_optimized_distributed.py clab-sonic-host03:/app/
