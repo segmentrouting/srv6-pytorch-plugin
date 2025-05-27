@@ -101,12 +101,14 @@ class NetworkOptimizedDistributed:
         rank = int(os.environ.get('RANK', '0'))
         world_size = int(os.environ.get('WORLD_SIZE', '1'))
         master_addr = os.environ.get('MASTER_ADDR', 'localhost')
+        master_port = os.environ.get('MASTER_PORT', '29500')
         backend_iface = os.environ.get('BACKEND_INTERFACE', 'eth1')
         
         logger.info(f"Initializing distributed process group:")
         logger.info(f"  Rank: {rank}")
         logger.info(f"  World Size: {world_size}")
         logger.info(f"  Master Address: {master_addr}")
+        logger.info(f"  Master Port: {master_port}")
         logger.info(f"  Backend: {backend}")
         logger.info(f"  Network Interface: {backend_iface}")
         
@@ -133,27 +135,70 @@ class NetworkOptimizedDistributed:
         os.environ['NCCL_SOCKET_IFNAME'] = backend_iface  # Set network interface
         os.environ['GLOO_SOCKET_IFNAME'] = backend_iface  # Set network interface for Gloo backend
         
+        # Log all relevant environment variables
+        logger.info("Distributed environment variables:")
+        logger.info(f"  NCCL_IB_DISABLE: {os.environ.get('NCCL_IB_DISABLE')}")
+        logger.info(f"  NCCL_SOCKET_IFNAME: {os.environ.get('NCCL_SOCKET_IFNAME')}")
+        logger.info(f"  GLOO_SOCKET_IFNAME: {os.environ.get('GLOO_SOCKET_IFNAME')}")
+        
         # Initialize PyTorch distributed first so we can use it for gathering node info
         logger.info("Calling torch.distributed.init_process_group...")
         try:
             # Format the init_method URL based on whether master_addr is IPv6
             if ':' in master_addr:  # IPv6 address
-                init_method = f"tcp://[{master_addr}]:{os.environ.get('MASTER_PORT', '29500')}"
+                init_method = f"tcp://[{master_addr}]:{master_port}"
             else:  # IPv4 address
-                init_method = f"tcp://{master_addr}:{os.environ.get('MASTER_PORT', '29500')}"
+                init_method = f"tcp://{master_addr}:{master_port}"
             
             logger.info(f"Using init_method: {init_method}")
             
-            dist.init_process_group(
-                backend=backend,
-                init_method=init_method,
-                world_size=world_size,
-                rank=rank,
-                timeout=datetime.timedelta(seconds=30)  # Add timeout
-            )
+            # Log the exact parameters being passed to init_process_group
+            init_params = {
+                'backend': backend,
+                'init_method': init_method,
+                'world_size': world_size,
+                'rank': rank,
+                'timeout': datetime.timedelta(seconds=30)
+            }
+            logger.info(f"init_process_group parameters: {init_params}")
+            
+            # Try to create a test socket before initialization
+            if rank == 0:
+                logger.info("Testing socket creation on master node...")
+                try:
+                    test_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                    test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    test_sock.bind(('::', int(master_port)))
+                    test_sock.listen(1)
+                    logger.info(f"Successfully created and bound test socket on port {master_port}")
+                    test_sock.close()
+                except Exception as e:
+                    logger.error(f"Failed to create test socket: {e}")
+            else:
+                logger.info("Testing connection to master node...")
+                try:
+                    test_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                    test_sock.settimeout(5)
+                    test_sock.connect((master_addr, int(master_port)))
+                    logger.info("Successfully connected to master node")
+                    test_sock.close()
+                except Exception as e:
+                    logger.error(f"Failed to connect to master node: {e}")
+            
+            # Initialize the process group
+            dist.init_process_group(**init_params)
             logger.info("PyTorch distributed initialization successful")
+            
+            # Log the process group state
+            logger.info("Process group state:")
+            logger.info(f"  is_initialized: {dist.is_initialized()}")
+            logger.info(f"  get_rank: {dist.get_rank()}")
+            logger.info(f"  get_world_size: {dist.get_world_size()}")
+            
         except Exception as e:
             logger.error(f"Failed to initialize PyTorch distributed: {e}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error details: {str(e)}")
             raise
         
         # Each rank prepares its node information

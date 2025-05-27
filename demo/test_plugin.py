@@ -10,15 +10,36 @@ load_dotenv()
 
 def test_tcp_connectivity(host, port, timeout=5):
     """Test TCP connectivity to a host:port"""
+    print(f"  Testing connection to {host}:{port}")
+    print(f"  Creating IPv6 socket...")
     try:
         # Create IPv6 socket
         sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         sock.settimeout(timeout)
+        print(f"  Attempting to connect...")
         result = sock.connect_ex((host, port))
+        print(f"  connect_ex result: {result}")
         sock.close()
         return result == 0
     except Exception as e:
-        print(f"Error testing connectivity to {host}:{port}: {e}")
+        print(f"  Error testing connectivity to {host}:{port}: {e}")
+        print(f"  Error type: {type(e)}")
+        return False
+
+def check_port_status(port):
+    """Check if a port is in use"""
+    try:
+        # Try both IPv4 and IPv6
+        for family in (socket.AF_INET, socket.AF_INET6):
+            sock = socket.socket(family, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex(('localhost', port))
+            sock.close()
+            if result == 0:
+                return True
+        return False
+    except Exception as e:
+        print(f"Error checking port {port}: {e}")
         return False
 
 def print_route_info(destination, srv6_data, interface, table_id=254):
@@ -65,10 +86,19 @@ def main():
     print(f"JALAPENO_API_ENDPOINT: {os.getenv('JALAPENO_API_ENDPOINT')}")
     print("-" * 50)
     
+    # Check if master port is in use
+    master_port = int(os.environ['MASTER_PORT'])
+    print(f"\nChecking master port {master_port} status:")
+    print("-" * 50)
+    if check_port_status(master_port):
+        print(f"Port {master_port} is already in use!")
+    else:
+        print(f"Port {master_port} is available")
+    print("-" * 50)
+    
     # Test TCP connectivity between nodes
     print("\nTesting TCP connectivity:")
     print("-" * 50)
-    master_port = int(os.environ['MASTER_PORT'])
     
     # Get local IP address for the backend interface
     backend_iface = os.environ['BACKEND_INTERFACE']
@@ -97,11 +127,23 @@ def main():
     
     for node_name, node_ip in nodes.items():
         if node_ip != local_ip:  # Don't test self
-            print(f"Testing connection to {node_name} ({node_ip}):{master_port}")
-            if test_tcp_connectivity(node_ip, master_port):
+            print(f"\nTesting connection to {node_name} ({node_ip}):{os.environ['MASTER_PORT']}")
+            if test_tcp_connectivity(node_ip, int(os.environ['MASTER_PORT'])):
                 print(f"✓ Successfully connected to {node_name}")
             else:
                 print(f"✗ Failed to connect to {node_name}")
+                # Try to get more information about the failure
+                try:
+                    print(f"  Attempting detailed connection test...")
+                    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    print(f"  Socket created, attempting connect...")
+                    sock.connect((node_ip, int(os.environ['MASTER_PORT'])))
+                except socket.error as e:
+                    print(f"  Error details: {e}")
+                    print(f"  Error type: {type(e)}")
+                finally:
+                    sock.close()
     print("-" * 50)
     
     # Set test source and destination based on rank
