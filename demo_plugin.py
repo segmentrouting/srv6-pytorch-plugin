@@ -15,7 +15,7 @@ class DemoPlugin:
         self.api_endpoint = api_endpoint
         self.network_programmer = NetworkProgrammer(api_endpoint)
     
-    def init_process_group(self, backend='nccl', **kwargs):
+    def init_process_group(self, backend='gloo', **kwargs):
         """Initialize distributed training and program routes"""
         # First, initialize PyTorch distributed
         if not init_distributed():

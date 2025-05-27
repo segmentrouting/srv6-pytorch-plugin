@@ -52,9 +52,9 @@ def init_distributed():
     logger.info(f"Using init_method: {init_method}")
     
     try:
-        # Initialize the process group with NCCL backend
+        # Initialize the process group with gloo backend for CPU
         dist.init_process_group(
-            backend='nccl',
+            backend='gloo',  # Use gloo backend for CPU
             init_method=init_method,
             world_size=world_size,
             rank=rank
