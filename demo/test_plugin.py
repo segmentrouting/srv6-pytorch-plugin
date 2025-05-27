@@ -235,8 +235,7 @@ def main():
     try:
         print("\nInitializing PyTorch distributed...")
         # Initialize distributed (this will get route information)
-        #  net_dist.init_process_group(backend='nccl')
-        net_dist.init_process_group(backend='gloo')  # Using gloo backend for CPU testing
+        net_dist.init_process_group(backend='tcp')  # Using tcp backend instead of gloo
         print("PyTorch distributed initialization complete")
         
         # Wait for route information to be processed
