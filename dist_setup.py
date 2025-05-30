@@ -2,6 +2,7 @@ import os
 import logging
 import torch.distributed as dist
 import netifaces
+from demo_plugin import DemoPlugin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -9,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 def get_node_info(backend_iface='eth1'):
     """Get node information including hostname and IP address"""
-    hostname = f"clab-sonic-host{int(os.environ.get('RANK', '0')):02d}"
+    hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
+    hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
     
     # Get IPv6 address from the backend interface
     addrs = netifaces.ifaddresses(backend_iface)
@@ -117,4 +119,18 @@ def get_all_nodes():
     
     # Sort nodes by rank to ensure consistent order
     all_nodes.sort(key=lambda x: x['rank'])
-    return all_nodes 
+    return all_nodes
+
+def setup_distributed():
+    """Setup distributed environment"""
+    # Get hostname from environment
+    hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
+    hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
+    
+    # Initialize plugin
+    plugin = DemoPlugin()
+    
+    # Setup distributed environment
+    plugin.setup_distributed(hostname)
+    
+    return plugin 

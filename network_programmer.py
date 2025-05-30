@@ -105,7 +105,8 @@ class NetworkProgrammer:
                 logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
         # Program routes for current node
-        current_host = f"hosts/clab-sonic-host{int(os.environ.get('RANK', '0')):02d}"
+        hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
+        current_host = f"hosts/{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
         logger.info(f"Programming routes for {current_host}")
         
         for pair_key, api_response in route_info.items():

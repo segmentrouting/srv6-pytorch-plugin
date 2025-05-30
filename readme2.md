@@ -14,12 +14,18 @@ sudo clab deploy -t topology.yaml
 ```
 docker cp demo_plugin.py clab-sonic-host00:/app/
 docker cp dist_setup.py clab-sonic-host00:/app/
+docker cp network_programmer.py clab-sonic-host00:/app/
+docker cp route_programmer.py clab-sonic-host00:/app/
 
 docker cp demo_plugin.py clab-sonic-host01:/app/
 docker cp dist_setup.py clab-sonic-host01:/app/
+docker cp network_programmer.py clab-sonic-host01:/app/
+docker cp route_programmer.py clab-sonic-host01:/app/
 
 docker cp demo_plugin.py clab-sonic-host03:/app/
 docker cp dist_setup.py clab-sonic-host03:/app/
+docker cp network_programmer.py clab-sonic-host03:/app/
+docker cp route_programmer.py clab-sonic-host03:/app/
 ```
 
 4. docker exec and start pytorch
