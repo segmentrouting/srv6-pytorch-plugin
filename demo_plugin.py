@@ -19,18 +19,13 @@ class DemoPlugin:
         """Initialize distributed training and program routes"""
         # First, initialize PyTorch distributed
         if not init_distributed():
-            logger.error("Failed to initialize PyTorch distributed")
             return False
         
         try:
             # Get information about all nodes
             nodes = get_all_nodes()
-            logger.info(f"Found {len(nodes)} nodes:")
-            for node in nodes:
-                logger.info(f"  Rank {node['rank']}: {node['hostname']} ({node['ip_address']})")
             
             # Program routes
-            logger.info("Programming network routes...")
             self.network_programmer.program_all_routes(nodes)
             
             return True

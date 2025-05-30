@@ -34,61 +34,36 @@ class LinuxRouteProgrammer(RouteProgrammer):
         return ':'.join(parts)
 
     def _append_dest_function(self, usid, srv6_data=None):
-        """Append destination function to USID if specified
-        
-        Args:
-            usid: The SRv6 USID to append function to
-            srv6_data: Optional dictionary containing SRv6 data from API response
-        """
+        """Append destination function to SRv6 USID"""
         # First try to get function from API response
+        function = None
         if srv6_data and 'srv6_endpoint_behavior' in srv6_data:
             try:
-                # Convert endpoint behavior to hex
-                behavior = srv6_data['srv6_endpoint_behavior']
-                if isinstance(behavior, dict):
-                    behavior = behavior.get('endpoint_behavior', 0)
-                function = f"{behavior:04x}"
-                print(f"Using function {function} from API response")
-            except (ValueError, TypeError) as e:
-                print(f"Error parsing API function data: {e}, falling back to env var")
-                function = None
-        else:
-            function = None
-
-        # If no function from API, try environment variable
+                # Convert to hex string if it's a number
+                function = hex(int(srv6_data['srv6_endpoint_behavior']))[2:]
+            except (ValueError, TypeError):
+                pass
+        
+        # Fall back to environment variable if no function in API data
         if not function:
-            function = os.environ.get('DEST_FUNCTION')
-            if function:
-                print(f"Using function {function} from environment variable")
-            
-        if not function:
-            return usid
-            
-        # Remove any trailing colons
-        usid = usid.rstrip(':')
+            function = os.getenv('DEST_FUNCTION')
+            if not function:
+                return usid
         
-        # Split the USID into parts
-        parts = usid.split(':')
+        # Split USID into parts and keep only non-empty parts
+        parts = [p for p in usid.split(':') if p]
         
-        # Calculate how many parts we need for the USID block and USIDs
-        # Each part is 16 bits, so we need to know the total bits needed
-        # for the USID block and USIDs, then divide by 16
-        usid_block_bits = 32  # Standard USID block size
-        usid_bits = 16  # Each USID is 16 bits
-        total_usid_parts = (usid_block_bits + usid_bits) // 16
+        # If we have 7 or fewer parts, append function after the last part
+        if len(parts) <= 7:
+            parts.append(function)
+            # Fill remaining parts with zeros to complete IPv6 address
+            while len(parts) < 8:
+                parts.append('0')
+            return ':'.join(parts)
         
-        # Ensure we have enough parts for the USID block and USIDs
-        while len(parts) < total_usid_parts:
-            parts.append('0')
-            
-        # Keep only the parts needed for USID block and USIDs
-        parts = parts[:total_usid_parts]
-        
-        # Add the function and remaining zeros to complete the IPv6 address
-        parts.append(function)  # Add function
-        while len(parts) < 8:  # Complete IPv6 address has 8 parts
-            parts.append('0')
-            
+        # If we have more than 7 parts, truncate and append function
+        parts = parts[:7]
+        parts.append(function)
         return ':'.join(parts)
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
