@@ -19,9 +19,12 @@ RUN pip3 install -r requirements.txt
 # Copy plugin files
 COPY dist_setup.py /app/
 COPY network_programmer.py /app/
-COPY demo_plugin.py /app/
 COPY route_programmer.py /app/
+COPY demo_plugin.py /app/
 COPY test_dist.py /app/
-COPY .env /app/
+COPY demo/.env /app/
+
+# Set capabilities for network operations
+RUN setcap 'cap_net_admin,cap_net_raw+ep' /sbin/ip
 
 WORKDIR /app
