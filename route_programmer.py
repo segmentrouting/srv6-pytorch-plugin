@@ -50,20 +50,26 @@ class LinuxRouteProgrammer(RouteProgrammer):
             if not function:
                 return usid
         
-        # Split USID into parts and keep only non-empty parts
-        parts = [p for p in usid.split(':') if p]
+        # Remove any trailing colons and split into parts
+        usid = usid.rstrip(':')
+        parts = usid.split(':')
         
-        # If we have 7 or fewer parts, append function after the last part
-        if len(parts) <= 7:
-            parts.append(function)
-            # Fill remaining parts with zeros to complete IPv6 address
+        # Find the last non-empty part
+        last_non_empty = len(parts) - 1
+        while last_non_empty >= 0 and not parts[last_non_empty]:
+            last_non_empty -= 1
+        
+        # If we have 7 or fewer parts up to the last non-empty part
+        if last_non_empty < 7:
+            # Add function as a new part after the last non-empty part
+            parts = parts[:last_non_empty + 1] + [function]
+            # Fill remaining parts with zeros
             while len(parts) < 8:
                 parts.append('0')
-            return ':'.join(parts)
+        else:
+            # If we have more than 7 parts, truncate and append function
+            parts = parts[:7] + [function]
         
-        # If we have more than 7 parts, truncate and append function
-        parts = parts[:7]
-        parts.append(function)
         return ':'.join(parts)
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
