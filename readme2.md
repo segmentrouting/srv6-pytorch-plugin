@@ -12,16 +12,19 @@ sudo clab deploy -t topology.yaml
 
 3. update files:
 ```
+docker cp .env clab-sonic-host00:/app/
 docker cp demo_plugin.py clab-sonic-host00:/app/
 docker cp dist_setup.py clab-sonic-host00:/app/
 docker cp network_programmer.py clab-sonic-host00:/app/
 docker cp route_programmer.py clab-sonic-host00:/app/
 
+docker cp .env clab-sonic-host01:/app/
 docker cp demo_plugin.py clab-sonic-host01:/app/
 docker cp dist_setup.py clab-sonic-host01:/app/
 docker cp network_programmer.py clab-sonic-host01:/app/
 docker cp route_programmer.py clab-sonic-host01:/app/
 
+docker cp .env clab-sonic-host03:/app/
 docker cp demo_plugin.py clab-sonic-host03:/app/
 docker cp dist_setup.py clab-sonic-host03:/app/
 docker cp network_programmer.py clab-sonic-host03:/app/

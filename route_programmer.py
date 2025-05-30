@@ -33,6 +33,55 @@ class LinuxRouteProgrammer(RouteProgrammer):
             
         return ':'.join(parts)
 
+    def _append_dest_function(self, usid, srv6_data=None):
+        """Append destination function to USID if specified
+        
+        Args:
+            usid: The SRv6 USID to append function to
+            srv6_data: Optional dictionary containing SRv6 data from API response
+        """
+        # First try to get function from API response
+        if srv6_data and 'srv6_endpoint_behavior' in srv6_data:
+            try:
+                # Convert endpoint behavior to hex
+                behavior = srv6_data['srv6_endpoint_behavior']
+                if isinstance(behavior, dict):
+                    behavior = behavior.get('endpoint_behavior', 0)
+                function = f"{behavior:04x}"
+                print(f"Using function {function} from API response")
+            except (ValueError, TypeError) as e:
+                print(f"Error parsing API function data: {e}, falling back to env var")
+                function = None
+        else:
+            function = None
+
+        # If no function from API, try environment variable
+        if not function:
+            function = os.environ.get('DEST_FUNCTION')
+            if function:
+                print(f"Using function {function} from environment variable")
+            
+        if not function:
+            return usid
+            
+        # Remove any trailing colons
+        usid = usid.rstrip(':')
+        
+        # Split the USID into parts
+        parts = usid.split(':')
+        
+        # If we have less than 8 parts, append the function
+        if len(parts) < 8:
+            parts.append(function)
+            # Fill remaining parts with zeros
+            while len(parts) < 8:
+                parts.append('0')
+        else:
+            # Replace the last part with the function
+            parts[-1] = function
+            
+        return ':'.join(parts)
+
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program Linux SRv6 route using pyroute2"""
         try:
@@ -51,9 +100,14 @@ class LinuxRouteProgrammer(RouteProgrammer):
             except ValueError as e:
                 raise ValueError(f"Invalid destination prefix: {e}")
 
+            # Get SRv6 data from kwargs if available
+            srv6_data = kwargs.get('srv6_data', {})
+
             # Validate and normalize the SRv6 USID
             try:
                 expanded_usid = self._expand_srv6_usid(srv6_usid)
+                # Append destination function if specified
+                expanded_usid = self._append_dest_function(expanded_usid, srv6_data)
                 ipaddress.IPv6Address(expanded_usid)
             except ValueError as e:
                 raise ValueError(f"Invalid SRv6 USID: {e}")
