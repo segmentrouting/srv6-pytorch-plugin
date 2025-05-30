@@ -2,7 +2,6 @@ import os
 import logging
 import torch.distributed as dist
 import netifaces
-from demo_plugin import DemoPlugin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -123,6 +122,9 @@ def get_all_nodes():
 
 def setup_distributed():
     """Setup distributed environment"""
+    # Import here to avoid circular import
+    from demo_plugin import DemoPlugin
+    
     # Get hostname from environment
     hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
     hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
