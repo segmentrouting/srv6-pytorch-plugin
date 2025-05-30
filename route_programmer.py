@@ -62,15 +62,14 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # If we have 7 or fewer parts up to the last non-empty part
         if last_non_empty < 7:
             # Add function as a new part after the last non-empty part
-            parts = parts[:last_non_empty + 1] + [function]
+            new_parts = parts[:last_non_empty + 1] + [function]
             # Fill remaining parts with zeros
-            while len(parts) < 8:
-                parts.append('0')
+            while len(new_parts) < 8:
+                new_parts.append('0')
+            return ':'.join(new_parts)
         else:
             # If we have more than 7 parts, truncate and append function
-            parts = parts[:7] + [function]
-        
-        return ':'.join(parts)
+            return ':'.join(parts[:7] + [function])
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program Linux SRv6 route using pyroute2"""
