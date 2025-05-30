@@ -105,7 +105,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
                 # Ignore errors if route doesn't exist
                 pass
             
-            print(f"Adding route with encap: {encap} to table {table_id}")
+            print(f"Adding route to {str(net)} with encap: {encap} to table {table_id}")
             
             # Add new route
             self.iproute.route('add',

@@ -69,7 +69,7 @@ def main():
             ping_destination = '2001:db8:1000::2'  # host-0 IPv6
         
         print(f"Pinging {ping_destination}")
-        os.system(f"ping6 -c 3 {ping_destination}")
+        os.system(f"ping6 -c 5 {ping_destination}")
         
         print("\nTest completed successfully!")
         
