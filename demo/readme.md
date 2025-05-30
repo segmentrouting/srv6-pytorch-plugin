@@ -7,8 +7,20 @@
 ### Environment Variables
 Create a `.env` file with the following variables:
 ```
-JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
-TOPOLOGY_COLLECTION=your-collection-name
+# PyTorch distributed settings
+RANK=0
+WORLD_SIZE=3
+MASTER_ADDR=2001:db8:1000::2
+MASTER_PORT=29501
+BACKEND_INTERFACE=eth1
+HOSTNAME_PREFIX=host
+
+# Network settings
+TOPOLOGY_COLLECTION=fabric_graph
+JALAPENO_API_ENDPOINT=http://198.18.128.101:30800/api/v1
+ROUTE_TABLE_ID=254
+ROUTE_PLATFORM=linux
+DEST_FUNCTION=fe06
 ```
 
 ### Construct the demo

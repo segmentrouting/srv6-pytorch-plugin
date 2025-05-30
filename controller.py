@@ -106,7 +106,18 @@ class NetworkProgrammer:
         
         # Program routes for current node
         hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
-        current_host = f"hosts/{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
+        rank = int(os.environ.get('RANK', '0'))
+        current_host = None
+        
+        # Find the current node's hostname from the nodes list
+        for node in nodes:
+            if node['rank'] == rank:
+                current_host = f"hosts/{node['hostname']}"
+                break
+        
+        if not current_host:
+            logger.error(f"Could not find hostname for rank {rank}")
+            return False
         
         for pair_key, api_response in route_info.items():
             source, destination = pair_key.split('_')
