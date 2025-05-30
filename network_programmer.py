@@ -40,7 +40,7 @@ class NetworkProgrammer:
             response.raise_for_status()
             data = response.json()
             
-            logger.info(f"API Response: {data}")
+            #logger.info(f"API Response: {data}")
             return data
         except Exception as e:
             logger.error(f"Network API call failed for {source} -> {destination}: {e}")
