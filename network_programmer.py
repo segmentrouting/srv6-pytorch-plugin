@@ -115,8 +115,8 @@ class NetworkProgrammer:
                 srv6_data = api_response.get('srv6_data', {})
                 if srv6_data:
                     # Extract destination network from the destination host
-                    dest_hostname = destination.split('/')[-1]
-                    dest_num = int(dest_hostname.split('-')[-1])
+                    dest_hostname = destination.split('/')[-1]  # Get hostname part
+                    dest_num = int(dest_hostname.replace(hostname_prefix, ''))  # Remove prefix and convert to number
                     dest_ip = f"2001:db8:100{dest_num}::/64"
                     
                     try:
