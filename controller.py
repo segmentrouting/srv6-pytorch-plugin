@@ -66,10 +66,10 @@ class NetworkProgrammer:
                 table_id=int(os.environ.get('ROUTE_TABLE_ID', '254'))
             )
             
-            if success:
-                logger.info(f"Route programming successful: {message}")
-            else:
-                logger.error(f"Route programming failed: {message}")
+            # if success:
+            #     logger.info(f"Route programming successful: {message}")
+            # else:
+            #     logger.error(f"Route programming failed: {message}")
             
             return success
         except Exception as e:
@@ -107,7 +107,6 @@ class NetworkProgrammer:
         # Program routes for current node
         hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
         current_host = f"hosts/{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
-        logger.info(f"Programming routes for {current_host}")
         
         for pair_key, api_response in route_info.items():
             source, destination = pair_key.split('_')

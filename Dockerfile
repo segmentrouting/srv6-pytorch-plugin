@@ -19,11 +19,9 @@ RUN pip3 install -r requirements.txt
 
 # Copy plugin files
 COPY dist_setup.py /app/
-COPY network_programmer.py /app/
+COPY controller.py /app/
 COPY route_programmer.py /app/
-COPY demo_plugin.py /app/
-COPY test_dist.py /app/
-COPY demo/.env /app/
+COPY srv6_plugin.py /app/
 
 # Create a script to set capabilities at runtime
 RUN echo '#!/bin/bash\nsetcap cap_net_admin,cap_net_raw+ep /sbin/ip\nexec "$@"' > /app/entrypoint.sh && \

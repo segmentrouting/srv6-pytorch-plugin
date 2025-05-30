@@ -3,7 +3,7 @@ import time
 import atexit
 import torch.distributed as dist
 from dotenv import load_dotenv
-from demo_plugin import DemoPlugin
+from srv6_plugin import DemoPlugin
 
 # Load environment variables
 load_dotenv()

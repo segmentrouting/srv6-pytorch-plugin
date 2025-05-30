@@ -1,7 +1,7 @@
 import os
 import logging
 from dist_setup import init_distributed, get_all_nodes
-from network_programmer import NetworkProgrammer
+from controller import NetworkProgrammer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

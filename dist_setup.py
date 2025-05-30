@@ -118,21 +118,4 @@ def get_all_nodes():
     
     # Sort nodes by rank to ensure consistent order
     all_nodes.sort(key=lambda x: x['rank'])
-    return all_nodes
-
-def setup_distributed():
-    """Setup distributed environment"""
-    # Import here to avoid circular import
-    from demo_plugin import DemoPlugin
-    
-    # Get hostname from environment
-    hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
-    hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
-    
-    # Initialize plugin
-    plugin = DemoPlugin()
-    
-    # Setup distributed environment
-    plugin.setup_distributed(hostname)
-    
-    return plugin 
+    return all_nodes 
