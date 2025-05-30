@@ -9,8 +9,11 @@ logger = logging.getLogger(__name__)
 
 def get_node_info(backend_iface='eth1'):
     """Get node information including hostname and IP address"""
-    hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
-    hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
+    # Get hostname from environment variable, with a default based on rank
+    hostname = os.environ.get('HOSTNAME')
+    if not hostname:
+        hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
+        hostname = f"{hostname_prefix}{int(os.environ.get('RANK', '0')):02d}"
     
     # Get IPv6 address from the backend interface
     addrs = netifaces.ifaddresses(backend_iface)

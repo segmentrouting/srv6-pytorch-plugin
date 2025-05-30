@@ -2,7 +2,7 @@
 
 1. build
 ```
-docker build -t pytorch-network-demo .
+docker build -t pytorch-srv6-plugin  .
 ```
 
 2. deploy topology
@@ -12,22 +12,25 @@ sudo clab deploy -t topology.yaml
 
 3. update files:
 ```
-docker cp .env clab-sonic-host00:/app/
-docker cp demo_plugin.py clab-sonic-host00:/app/
+docker cp demo/.env clab-sonic-host00:/app/
+docker cp demo/test_dist.py clab-sonic-host00:/app/
+docker cp plugin.py clab-sonic-host00:/app/
 docker cp dist_setup.py clab-sonic-host00:/app/
-docker cp network_programmer.py clab-sonic-host00:/app/
+docker cp controller.py clab-sonic-host00:/app/
 docker cp route_programmer.py clab-sonic-host00:/app/
 
-docker cp .env clab-sonic-host01:/app/
-docker cp demo_plugin.py clab-sonic-host01:/app/
+docker cp demo/.env clab-sonic-host01:/app/
+docker cp demo/test_dist.py clab-sonic-host01:/app/
+docker cp plugin.py clab-sonic-host01:/app/
 docker cp dist_setup.py clab-sonic-host01:/app/
-docker cp network_programmer.py clab-sonic-host01:/app/
+docker cp controller.py clab-sonic-host01:/app/
 docker cp route_programmer.py clab-sonic-host01:/app/
 
-docker cp .env clab-sonic-host03:/app/
-docker cp demo_plugin.py clab-sonic-host03:/app/
+docker cp demo/.env clab-sonic-host03:/app/
+docker cp demo/test_dist.py clab-sonic-host03:/app/
+docker cp plugin.py clab-sonic-host03:/app/
 docker cp dist_setup.py clab-sonic-host03:/app/
-docker cp network_programmer.py clab-sonic-host03:/app/
+docker cp controller.py clab-sonic-host03:/app/
 docker cp route_programmer.py clab-sonic-host03:/app/
 ```
 

@@ -124,10 +124,16 @@ class NetworkProgrammer:
             if source == current_host and api_response.get('found'):
                 srv6_data = api_response.get('srv6_data', {})
                 if srv6_data:
-                    # Extract destination network from the destination host
-                    dest_hostname = destination.split('/')[-1]  # Get hostname part
-                    dest_num = int(dest_hostname.replace(hostname_prefix, ''))  # Remove prefix and convert to number
-                    dest_ip = f"2001:db8:100{dest_num}::/64"
+                    # Extract destination network from the API response
+                    dest_info = api_response.get('destination_info', {})
+                    if not dest_info or 'prefix' not in dest_info:
+                        logger.warning(f"No prefix information found for {destination}")
+                        continue
+                    
+                    # Use the prefix from the API response
+                    dest_ip = dest_info['prefix']
+                    if not dest_ip.endswith('::'):
+                        dest_ip = f"{dest_ip}/64"
                     
                     try:
                         logger.info(f"Programming route to {destination} ({dest_ip})")
