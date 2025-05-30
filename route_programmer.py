@@ -27,10 +27,9 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # Split the USID into parts
         parts = usid.split(':')
         
-        # Add zeros to make it a complete IPv6 address (8 parts)
-        while len(parts) < 8:
-            parts.append('0')
-            
+        # Keep only non-empty parts
+        parts = [p for p in parts if p]
+        
         return ':'.join(parts)
 
     def _append_dest_function(self, usid, srv6_data=None):
@@ -50,26 +49,14 @@ class LinuxRouteProgrammer(RouteProgrammer):
             if not function:
                 return usid
         
-        # Remove any trailing colons and split into parts
-        usid = usid.rstrip(':')
-        parts = usid.split(':')
+        # Split USID into parts and keep only non-empty parts
+        parts = [p for p in usid.split(':') if p]
         
-        # Find the last non-empty part
-        last_non_empty = len(parts) - 1
-        while last_non_empty >= 0 and not parts[last_non_empty]:
-            last_non_empty -= 1
+        # Add function as a new part
+        parts.append(function)
         
-        # If we have 7 or fewer parts up to the last non-empty part
-        if last_non_empty < 7:
-            # Add function as a new part after the last non-empty part
-            new_parts = parts[:last_non_empty + 1] + [function]
-            # Fill remaining parts with zeros
-            while len(new_parts) < 8:
-                new_parts.append('0')
-            return ':'.join(new_parts)
-        else:
-            # If we have more than 7 parts, truncate and append function
-            return ':'.join(parts[:7] + [function])
+        # Join with :: to represent remaining zeros
+        return ':'.join(parts) + '::'
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program Linux SRv6 route using pyroute2"""
@@ -244,10 +231,9 @@ class VPPRouteProgrammer(RouteProgrammer):
         # Split the USID into parts
         parts = usid.split(':')
         
-        # Add zeros to make it a complete IPv6 address (8 parts)
-        while len(parts) < 8:
-            parts.append('0')
-            
+        # Keep only non-empty parts
+        parts = [p for p in parts if p]
+        
         return ':'.join(parts)
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
