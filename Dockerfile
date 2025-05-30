@@ -31,4 +31,4 @@ RUN echo '#!/bin/bash\nsetcap cap_net_admin,cap_net_raw+ep /sbin/ip\nexec "$@"' 
 
 WORKDIR /app
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["python3", "/app/test_dist.py"]
+CMD ["/bin/bash"]

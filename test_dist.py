@@ -1,10 +1,20 @@
 import os
 import time
+import atexit
+import torch.distributed as dist
 from dotenv import load_dotenv
 from demo_plugin import DemoPlugin
 
 # Load environment variables
 load_dotenv()
+
+def cleanup():
+    """Cleanup function to destroy distributed process group"""
+    if dist.is_initialized():
+        dist.destroy_process_group()
+
+# Register cleanup function
+atexit.register(cleanup)
 
 def main():
     # Set environment variables for distributed setup
@@ -72,6 +82,9 @@ def main():
         print("4. Check containerlab network connectivity")
         print("5. Verify all nodes can reach the master IP address")
         print("6. Check if the master port is available and not blocked")
+    finally:
+        # Ensure cleanup happens even if there's an error
+        cleanup()
 
 if __name__ == "__main__":
     main() 
