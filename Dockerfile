@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     iputils-ping \
     net-tools \
+    libcap2-bin \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -24,7 +25,10 @@ COPY demo_plugin.py /app/
 COPY test_dist.py /app/
 COPY demo/.env /app/
 
-# Set capabilities for network operations
-RUN setcap 'cap_net_admin,cap_net_raw+ep' /sbin/ip
+# Create a script to set capabilities at runtime
+RUN echo '#!/bin/bash\nsetcap cap_net_admin,cap_net_raw+ep /sbin/ip\nexec "$@"' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
 
 WORKDIR /app
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["python3", "/app/test_dist.py"]
