@@ -70,15 +70,24 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # Split the USID into parts
         parts = usid.split(':')
         
-        # If we have less than 8 parts, append the function
-        if len(parts) < 8:
-            parts.append(function)
-            # Fill remaining parts with zeros
-            while len(parts) < 8:
-                parts.append('0')
-        else:
-            # Replace the last part with the function
-            parts[-1] = function
+        # Calculate how many parts we need for the USID block and USIDs
+        # Each part is 16 bits, so we need to know the total bits needed
+        # for the USID block and USIDs, then divide by 16
+        usid_block_bits = 32  # Standard USID block size
+        usid_bits = 16  # Each USID is 16 bits
+        total_usid_parts = (usid_block_bits + usid_bits) // 16
+        
+        # Ensure we have enough parts for the USID block and USIDs
+        while len(parts) < total_usid_parts:
+            parts.append('0')
+            
+        # Keep only the parts needed for USID block and USIDs
+        parts = parts[:total_usid_parts]
+        
+        # Add the function and remaining zeros to complete the IPv6 address
+        parts.append(function)  # Add function
+        while len(parts) < 8:  # Complete IPv6 address has 8 parts
+            parts.append('0')
             
         return ':'.join(parts)
 
