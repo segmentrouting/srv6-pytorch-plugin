@@ -27,16 +27,21 @@ class NetworkProgrammer:
         """Get route information from the API"""
         try:
             logger.info(f"Calling network API for {source} -> {destination}")
-            response = requests.get(
-                f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load",
-                params={
-                    'source': source,
-                    'destination': destination,
-                    'direction': 'outbound'
-                }
-            )
+            url = f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load"
+            params = {
+                'source': source,
+                'destination': destination,
+                'direction': 'outbound'
+            }
+            logger.info(f"API URL: {url}")
+            logger.info(f"API Parameters: {params}")
+            
+            response = requests.get(url, params=params)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            
+            logger.info(f"API Response: {data}")
+            return data
         except Exception as e:
             logger.error(f"Network API call failed for {source} -> {destination}: {e}")
             return None
@@ -52,6 +57,7 @@ class NetworkProgrammer:
             destination = f"{destination}/32"
         
         try:
+            logger.info(f"Programming route to {destination} with SRv6 data: {srv6_data}")
             # Program the route
             success, message = self.route_programmer.program_route(
                 destination_prefix=destination,
@@ -94,6 +100,9 @@ class NetworkProgrammer:
             api_response = self.get_route_info(pair['source'], pair['destination'])
             if api_response and api_response.get('found'):
                 route_info[f"{pair['source']}_{pair['destination']}"] = api_response
+                logger.info(f"Found route for {pair['source']} -> {pair['destination']}")
+            else:
+                logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
         # Program routes for current node
         current_host = f"hosts/clab-sonic-host{int(os.environ.get('RANK', '0')):02d}"
@@ -118,5 +127,9 @@ class NetworkProgrammer:
                         )
                     except Exception as e:
                         logger.error(f"Error programming route to {destination}: {e}")
+                else:
+                    logger.warning(f"No SRv6 data found in API response for {destination}")
+            else:
+                logger.debug(f"Skipping route for {source} -> {destination} (not current host or no route found)")
         
         return True 
