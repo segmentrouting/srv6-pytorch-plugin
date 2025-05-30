@@ -30,7 +30,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # Keep only non-empty parts
         parts = [p for p in parts if p]
         
-        return ':'.join(parts)
+        # Join with :: to represent remaining zeros
+        return ':'.join(parts) + '::'
 
     def _append_dest_function(self, usid, srv6_data=None):
         """Append destination function to SRv6 USID"""
@@ -234,7 +235,8 @@ class VPPRouteProgrammer(RouteProgrammer):
         # Keep only non-empty parts
         parts = [p for p in parts if p]
         
-        return ':'.join(parts)
+        # Join with :: to represent remaining zeros
+        return ':'.join(parts) + '::'
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program VPP SRv6 route using CLI"""
