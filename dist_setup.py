@@ -55,14 +55,17 @@ def init_distributed():
     
     logger.info(f"  Using init_method: {init_method}")
     
+    # Initialize the process group
+    logger.info("Initializing PyTorch distributed process group...")
     try:
-        # Initialize the process group with gloo backend for CPU
+        logger.info("About to call dist.init_process_group...")
         dist.init_process_group(
             backend='gloo',  # Use gloo backend for CPU
             init_method=init_method,
             world_size=world_size,
             rank=rank
         )
+        logger.info("dist.init_process_group completed successfully")
         
         # Verify initialization
         if dist.is_initialized():
