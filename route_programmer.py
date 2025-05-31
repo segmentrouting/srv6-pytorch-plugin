@@ -61,7 +61,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
 
     def program_route(self, destination_prefix, srv6_usid, **kwargs):
         """Program Linux SRv6 route using pyroute2"""
-        print(f"\nProgramming routes: ")
+        #print(f"\nProgramming routes: ")
         try:
             if not destination_prefix:
                 raise ValueError("destination_prefix is required")

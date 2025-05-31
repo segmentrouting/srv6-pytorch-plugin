@@ -72,7 +72,6 @@ def main():
             return
             
         # Program routes
-        print("\nProgramming routes...")
         nodes = get_all_nodes()
         if not plugin.network_programmer.program_all_routes(nodes):
             print("Failed to program routes")
