@@ -42,3 +42,13 @@ docker exec clab-sonic-host01 bash -c "RANK=1 python3 /app/test_plugin.py"
 # Start host03
 docker exec clab-sonic-host03 bash -c "RANK=2 python3 /app/test_plugin.py"
 ```
+
+## port freeze?
+
+```
+docker exec -it clab-sonic-host00 bash
+apt update
+apt install netcat
+exit
+docker exec clab-sonic-host00 bash -c "nc -zv 2001:db8:1001::2 29501"
+```
