@@ -56,7 +56,7 @@ class NetworkProgrammer:
             destination = f"{destination}/32"
         
         try:
-            logger.info(f"Programming route to {destination} with SRv6 data: {srv6_data}")
+            logger.info(f"  Route to {destination}, SRv6 data: {srv6_data}")
             # Program the route
             success, message = self.route_programmer.program_route(
                 destination_prefix=destination,
@@ -146,7 +146,7 @@ class NetworkProgrammer:
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     
                     try:
-                        logger.info(f"Programming route to {destination} ({dest_ip})")
+                        #logger.info(f"Programming route to {destination} ({dest_ip})")
                         self.program_route(
                             destination=dest_ip,
                             srv6_data=srv6_data,
