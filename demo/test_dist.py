@@ -61,15 +61,41 @@ def main():
         
         # Test connectivity
         print("\nTesting connectivity...")
-        if rank == 0:
-            ping_destination = '2001:db8:1001::2'  # host-1 IPv6
-        elif rank == 1:
-            ping_destination = '2001:db8:1003::2'  # host-3 IPv6
-        else:
-            ping_destination = '2001:db8:1000::2'  # host-0 IPv6
+        # Get all nodes from distributed setup
+        nodes = get_all_nodes()
         
-        print(f"Pinging {ping_destination}")
-        os.system(f"ping6 -c 5 {ping_destination}")
+        # Get current node's hostname
+        current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
+        
+        # Determine IP version from MASTER_ADDR
+        master_addr = os.environ.get('MASTER_ADDR', '')
+        is_ipv6 = ':' in master_addr
+        
+        # Find ping destination - ping the next host in the list
+        ping_destination = None
+        for i, node in enumerate(nodes):
+            if node['hostname'] == current_host:
+                # Get the next host in the list (wrap around to first if at end)
+                next_node = nodes[(i + 1) % len(nodes)]
+                # Get the IP address from the API response
+                api_response = plugin.network_programmer.get_route_info(
+                    f"hosts/{current_host}",
+                    f"hosts/{next_node['hostname']}"
+                )
+                if api_response and 'destination_info' in api_response:
+                    dest_info = api_response['destination_info']
+                    if is_ipv6:
+                        ping_destination = dest_info.get('ipv6_address')
+                    else:
+                        ping_destination = dest_info.get('ipv4_address')
+                break
+        
+        if ping_destination:
+            print(f"Pinging {ping_destination}")
+            ping_cmd = "ping6" if is_ipv6 else "ping"
+            os.system(f"{ping_cmd} -c 5 {ping_destination}")
+        else:
+            print("Could not determine ping destination")
         
         print("\nTest completed successfully!")
         

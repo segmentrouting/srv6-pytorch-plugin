@@ -40,13 +40,13 @@ containerlab deploy -t topology.yaml
 4. Start the test on each host
 ```
 # On host00
-docker exec clab-sonic-host00 bash -c "RANK=0 python3 /app/test_plugin.py"
+docker exec clab-sonic-host00 bash -c "RANK=0 python3 /app/test_dist.py"
 
 # On host01
-docker exec clab-sonic-host01 bash -c "RANK=1 python3 /app/test_plugin.py"
+docker exec clab-sonic-host01 bash -c "RANK=1 python3 /app/test_dist.py"
 
 # On host03
-docker exec clab-sonic-host03 bash -c "RANK=2 python3 /app/test_plugin.py"
+docker exec clab-sonic-host03 bash -c "RANK=2 python3 /app/test_dist.py"
 ```
 
 ### Notes on test_plugin.py flow:

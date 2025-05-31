@@ -126,14 +126,25 @@ class NetworkProgrammer:
                 if srv6_data:
                     # Extract destination network from the API response
                     dest_info = api_response.get('destination_info', {})
-                    if not dest_info or 'prefix' not in dest_info:
+                    if not dest_info or 'prefix' not in dest_info or 'prefix_len' not in dest_info:
                         logger.warning(f"No prefix information found for {destination}")
                         continue
                     
-                    # Use the prefix from the API response
-                    dest_ip = dest_info['prefix']
-                    if not dest_ip.endswith('::'):
-                        dest_ip = f"{dest_ip}/64"
+                    # Determine IP version from MASTER_ADDR
+                    master_addr = os.environ.get('MASTER_ADDR', '')
+                    is_ipv6 = ':' in master_addr
+                    
+                    # Use the appropriate prefix and prefix_len from the API response
+                    if is_ipv6:
+                        if not dest_info.get('ipv6_address'):
+                            logger.warning(f"No IPv6 address found for {destination}")
+                            continue
+                        dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
+                    else:
+                        if not dest_info.get('ipv4_address'):
+                            logger.warning(f"No IPv4 address found for {destination}")
+                            continue
+                        dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     
                     try:
                         logger.info(f"Programming route to {destination} ({dest_ip})")
