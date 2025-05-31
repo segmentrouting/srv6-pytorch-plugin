@@ -64,7 +64,7 @@ def init_distributed():
             world_size=world_size,
             rank=rank
         )
-        logger.info("dist.init_process_group completed successfully")
+        #logger.info("dist.init_process_group completed successfully")
         
         # Verify initialization
         if dist.is_initialized():

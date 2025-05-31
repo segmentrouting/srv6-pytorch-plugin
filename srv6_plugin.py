@@ -25,14 +25,14 @@ class DemoPlugin:
         
         try:
             # Get information about all nodes
-            logger.info("  Getting node information...")
+            logger.info(" Getting node information...")
             nodes = get_all_nodes()
             
             # Program routes
             #logger.info("  Begin programming routes...")
             self.network_programmer.program_all_routes(nodes)
             
-            logger.info("Initialization completed successfully")
+            logger.info(" Initialization completed successfully")
             return True
             
         except Exception as e:
