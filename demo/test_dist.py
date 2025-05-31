@@ -79,7 +79,7 @@ def main():
             return
             
         # Test connectivity
-        #print("\nTesting connectivity between nodes...")
+        print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         
@@ -87,17 +87,14 @@ def main():
         master_addr = os.environ.get('MASTER_ADDR', '')
         is_ipv6 = ':' in master_addr
         
-        # Find ping destination - ping the next host in the list
-        ping_destination = None
-        for i, node in enumerate(nodes):
-            if node['hostname'] == current_host:
-                # Get the next host in the list (wrap around to first if at end)
-                next_node = nodes[(i + 1) % len(nodes)]
-                print(f"\nTesting connectivity from {current_host} to {next_node['hostname']}...")
+        # Test connectivity to all other nodes
+        for node in nodes:
+            if node['hostname'] != current_host:  # Skip self
+                print(f"\nTesting connectivity from {current_host} to {node['hostname']}...", flush=True)
                 # Get the IP address from the API response
                 api_response = plugin.network_programmer.get_route_info(
                     f"hosts/{current_host}",
-                    f"hosts/{next_node['hostname']}"
+                    f"hosts/{node['hostname']}"
                 )
                 if api_response and 'destination_info' in api_response:
                     dest_info = api_response['destination_info']
@@ -105,16 +102,17 @@ def main():
                         ping_destination = dest_info.get('ipv6_address')
                     else:
                         ping_destination = dest_info.get('ipv4_address')
-                break
+                        
+                    if ping_destination:
+                        print(f"Pinging {ping_destination}", flush=True)
+                        ping_cmd = "ping6" if is_ipv6 else "ping"
+                        os.system(f"{ping_cmd} -c 4 {ping_destination}")
+                    else:
+                        print(f"Could not determine ping destination for {node['hostname']}", flush=True)
+                else:
+                    print(f"Could not get route information for {node['hostname']}", flush=True)
         
-        if ping_destination:
-            print(f"Pinging {ping_destination}")
-            ping_cmd = "ping6" if is_ipv6 else "ping"
-            os.system(f"{ping_cmd} -c 4 {ping_destination}")
-        else:
-            print("Could not determine ping destination")
-        
-        print("\nTest completed successfully!")
+        print("\nTest completed successfully!", flush=True)
         
     except Exception as e:
         print(f"\nError during test: {str(e)}")
