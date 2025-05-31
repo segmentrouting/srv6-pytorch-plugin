@@ -53,7 +53,7 @@ def init_distributed():
     else:  # IPv4 address
         init_method = f"tcp://{master_addr}:{master_port}"
     
-    logger.info(f"Using init_method: {init_method}")
+    logger.info(f"  Using init_method: {init_method}")
     
     try:
         # Initialize the process group with gloo backend for CPU
@@ -66,7 +66,7 @@ def init_distributed():
         
         # Verify initialization
         if dist.is_initialized():
-            logger.info("PyTorch distributed initialization successful")
+            logger.info("  PyTorch distributed initialization successful")
             logger.info(f"  Backend: {dist.get_backend()}")
             logger.info(f"  Rank: {dist.get_rank()}")
             logger.info(f"  World Size: {dist.get_world_size()}")

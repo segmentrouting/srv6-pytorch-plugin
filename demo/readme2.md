@@ -14,21 +14,28 @@ sudo clab deploy -t topology.yaml
 ```
 docker cp demo/.env clab-sonic-host00:/app/
 docker cp demo/test_dist.py clab-sonic-host00:/app/
-docker cp plugin.py clab-sonic-host00:/app/
+docker cp srv6_plugin.py clab-sonic-host00:/app/
 docker cp dist_setup.py clab-sonic-host00:/app/
 docker cp controller.py clab-sonic-host00:/app/
 docker cp route_programmer.py clab-sonic-host00:/app/
 
 docker cp demo/.env clab-sonic-host01:/app/
 docker cp demo/test_dist.py clab-sonic-host01:/app/
-docker cp plugin.py clab-sonic-host01:/app/
+docker cp srv6_plugin.py clab-sonic-host01:/app/
 docker cp dist_setup.py clab-sonic-host01:/app/
 docker cp controller.py clab-sonic-host01:/app/
 docker cp route_programmer.py clab-sonic-host01:/app/
 
+docker cp demo/.env clab-sonic-host02:/app/
+docker cp demo/test_dist.py clab-sonic-host02:/app/
+docker cp srv6_plugin.py clab-sonic-host02:/app/
+docker cp dist_setup.py clab-sonic-host02:/app/
+docker cp controller.py clab-sonic-host02:/app/
+docker cp route_programmer.py clab-sonic-host02:/app/
+
 docker cp demo/.env clab-sonic-host03:/app/
 docker cp demo/test_dist.py clab-sonic-host03:/app/
-docker cp plugin.py clab-sonic-host03:/app/
+docker cp srv6_plugin.py clab-sonic-host03:/app/
 docker cp dist_setup.py clab-sonic-host03:/app/
 docker cp controller.py clab-sonic-host03:/app/
 docker cp route_programmer.py clab-sonic-host03:/app/

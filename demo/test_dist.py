@@ -65,17 +65,21 @@ def main():
         print("\nInitializing demo plugin...")
         plugin = DemoPlugin(api_endpoint)
         
-        # Initialize distributed training and program routes
-        print("\nInitializing distributed training and programming routes...")
+        # Initialize distributed training
+        print("\nInitializing distributed training...")
         if not plugin.init_process_group():
             print("Failed to initialize distributed training")
             return
-        
-        # Test connectivity
-        print("\nTesting connectivity...")
-        # Get all nodes from distributed setup
+            
+        # Program routes
+        print("\nProgramming routes...")
         nodes = get_all_nodes()
-        
+        if not plugin.network_programmer.program_all_routes(nodes):
+            print("Failed to program routes")
+            return
+            
+        # Test connectivity
+        print("\nTesting connectivity between nodes...")
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         
@@ -89,6 +93,7 @@ def main():
             if node['hostname'] == current_host:
                 # Get the next host in the list (wrap around to first if at end)
                 next_node = nodes[(i + 1) % len(nodes)]
+                print(f"\nTesting connectivity from {current_host} to {next_node['hostname']}...")
                 # Get the IP address from the API response
                 api_response = plugin.network_programmer.get_route_info(
                     f"hosts/{current_host}",
