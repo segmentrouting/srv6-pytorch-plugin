@@ -41,7 +41,7 @@ def init_distributed():
     master_addr = os.environ.get('MASTER_ADDR', 'localhost')
     master_port = os.environ.get('MASTER_PORT', '29500')
     
-    logger.info(f"Initializing distributed training:")
+    logger.info(f"  Initializing distributed training:")
     logger.info(f"  Rank: {rank}")
     logger.info(f"  World Size: {world_size}")
     logger.info(f"  Master Address: {master_addr}")
@@ -56,9 +56,8 @@ def init_distributed():
     logger.info(f"  Using init_method: {init_method}")
     
     # Initialize the process group
-    logger.info("Initializing PyTorch distributed process group...")
+    logger.info("  Initializing PyTorch distributed process group...")
     try:
-        logger.info("About to call dist.init_process_group...")
         dist.init_process_group(
             backend='gloo',  # Use gloo backend for CPU
             init_method=init_method,
@@ -69,10 +68,6 @@ def init_distributed():
         
         # Verify initialization
         if dist.is_initialized():
-            logger.info("  PyTorch distributed initialization successful")
-            logger.info(f"  Backend: {dist.get_backend()}")
-            logger.info(f"  Rank: {dist.get_rank()}")
-            logger.info(f"  World Size: {dist.get_world_size()}")
             return True
         else:
             logger.error("PyTorch distributed initialization failed")

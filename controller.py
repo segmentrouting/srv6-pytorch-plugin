@@ -17,7 +17,7 @@ class NetworkProgrammer:
         platform = os.environ.get('ROUTE_PLATFORM', 'linux')
         try:
             self.route_programmer = RouteProgrammerFactory.get_programmer(platform)
-            logger.info(f"Initialized {platform} route programmer")
+            #logger.info(f"Initialized {platform} route programmer")
         except Exception as e:
             logger.error(f"Failed to initialize route programmer: {e}")
             logger.warning("Route programming will be disabled")

@@ -97,6 +97,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
                     'mode': 'encap',
                     'segs': [expanded_usid]}
             
+            print(f"\nProgramming routes: ")
             # Try to delete existing route first
             try:
                 self.iproute.route('del', table=table_id, dst=str(net))

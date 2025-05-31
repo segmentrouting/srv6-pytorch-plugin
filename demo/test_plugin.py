@@ -62,11 +62,11 @@ def main():
             print("Error: JALAPENO_API_ENDPOINT environment variable not set")
             return
         
-        print("\nInitializing demo plugin...")
+        #print("\nInitializing demo plugin...")
         plugin = DemoPlugin(api_endpoint)
         
         # Initialize distributed training
-        print("\nInitializing distributed training...")
+        #print("\nInitializing distributed training...")
         if not plugin.init_process_group():
             print("Failed to initialize distributed training")
             return
