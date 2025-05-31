@@ -68,6 +68,15 @@ plugin = DemoPlugin(
 plugin.init_process_group()
 ```
 
+Set backend in [dist_setup.py](dist_setup.py):
+```python
+# Demo uses:
+dist.init_process_group(backend="gloo")
+
+# NCCL:
+dist.init_process_group(backend="nccl")
+```
+
 ## Environment Variables
 
 - `JALAPENO_API_ENDPOINT`: URL of the Jalapeno API
