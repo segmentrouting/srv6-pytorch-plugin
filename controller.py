@@ -99,7 +99,7 @@ class NetworkProgrammer:
             api_response = self.get_route_info(pair['source'], pair['destination'])
             if api_response and api_response.get('found'):
                 route_info[f"{pair['source']}_{pair['destination']}"] = api_response
-                logger.info(f"Found route for {pair['source']} -> {pair['destination']}")
+                #logger.info(f"Found route for {pair['source']} -> {pair['destination']}")
             else:
                 logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         

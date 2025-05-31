@@ -72,14 +72,14 @@ def main():
             return
             
         # Program routes
-        print("\nProgramming routes...")
+        #print("\nProgramming routes...")
         nodes = get_all_nodes()
         if not plugin.network_programmer.program_all_routes(nodes):
             print("Failed to program routes")
             return
             
         # Test connectivity
-        print("\nTesting connectivity between nodes...")
+        #print("\nTesting connectivity between nodes...")
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         
@@ -110,7 +110,7 @@ def main():
         if ping_destination:
             print(f"Pinging {ping_destination}")
             ping_cmd = "ping6" if is_ipv6 else "ping"
-            os.system(f"{ping_cmd} -c 5 {ping_destination}")
+            os.system(f"{ping_cmd} -c 4 {ping_destination}")
         else:
             print("Could not determine ping destination")
         
