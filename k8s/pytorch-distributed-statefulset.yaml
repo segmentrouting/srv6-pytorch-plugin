@@ -5,11 +5,12 @@ metadata:
 data:
   JALAPENO_API_ENDPOINT: "http://jalapeno-api:8000"
   TOPOLOGY_COLLECTION: "fabric_graph"
-  BACKEND_INTERFACE: "eth0"
+  BACKEND_INTERFACE: "eth1"
   ROUTE_PLATFORM: "linux"
   ROUTE_TABLE_ID: "254"
-  WORLD_SIZE: "4"
-  MASTER_PORT: "29500"
+  WORLD_SIZE: "3"
+  MASTER_PORT: "29501"
+  HOSTS: "host00,host01,host02"
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -17,7 +18,7 @@ metadata:
   name: pytorch-distributed-training
 spec:
   serviceName: "pytorch-distributed"
-  replicas: 4  # Number of nodes
+  replicas: 3  # Number of nodes
   selector:
     matchLabels:
       app: pytorch-distributed
@@ -35,7 +36,7 @@ spec:
             name: pytorch-distributed-config
         env:
         - name: MASTER_ADDR
-          value: "pytorch-distributed-training-0.pytorch-distributed"  # First pod's DNS name
+          value: "2001:db8:1000::2"  # IPv6 address of master node
         - name: RANK
           valueFrom:
             fieldRef:
@@ -57,5 +58,5 @@ spec:
   selector:
     app: pytorch-distributed
   ports:
-  - port: 29500
-    name: nccl 
+  - port: 29501
+    name: distributed 
