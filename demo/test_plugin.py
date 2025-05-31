@@ -43,17 +43,17 @@ def main():
     os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth1')
     os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
     
-    # # Print all environment variables for debugging
-    # print("\nEnvironment Variables:")
-    # print("-" * 50)
-    # print(f"RANK: {os.environ['RANK']}")
-    # print(f"WORLD_SIZE: {os.environ['WORLD_SIZE']}")
-    # print(f"MASTER_ADDR: {os.environ['MASTER_ADDR']}")
-    # print(f"MASTER_PORT: {os.environ['MASTER_PORT']}")
-    # print(f"BACKEND_INTERFACE: {os.environ['BACKEND_INTERFACE']}")
-    # print(f"TOPOLOGY_COLLECTION: {os.environ['TOPOLOGY_COLLECTION']}")
-    # print(f"JALAPENO_API_ENDPOINT: {os.getenv('JALAPENO_API_ENDPOINT')}")
-    # print("-" * 50)
+    # Print all environment variables for debugging
+    print("\nEnvironment Variables:")
+    print("-" * 50)
+    print(f"RANK: {os.environ['RANK']}")
+    print(f"WORLD_SIZE: {os.environ['WORLD_SIZE']}")
+    print(f"MASTER_ADDR: {os.environ['MASTER_ADDR']}")
+    print(f"MASTER_PORT: {os.environ['MASTER_PORT']}")
+    print(f"BACKEND_INTERFACE: {os.environ['BACKEND_INTERFACE']}")
+    print(f"TOPOLOGY_COLLECTION: {os.environ['TOPOLOGY_COLLECTION']}")
+    print(f"JALAPENO_API_ENDPOINT: {os.getenv('JALAPENO_API_ENDPOINT')}")
+    print("-" * 50)
     
     try:
         # Initialize the demo plugin
@@ -72,7 +72,7 @@ def main():
             return
             
         # Program routes
-        #print("\nProgramming routes...")
+        print("\nProgramming routes...")
         nodes = get_all_nodes()
         if not plugin.network_programmer.program_all_routes(nodes):
             print("Failed to program routes")
