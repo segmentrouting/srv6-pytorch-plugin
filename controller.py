@@ -91,7 +91,7 @@ class NetworkProgrammer:
                         'destination': f"hosts/{nodes[j]['hostname']}"
                     })
         
-        logger.info(f"Generated source/destination pairs: {all_pairs}")
+        #logger.info(f"Generated source/destination pairs: {all_pairs}")
         
         # Get route information for each pair
         route_info = {}
