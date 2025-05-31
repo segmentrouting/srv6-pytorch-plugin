@@ -16,6 +16,18 @@ def cleanup():
 # Register cleanup function
 atexit.register(cleanup)
 
+def get_all_nodes():
+    """Get list of all nodes in the distributed setup from environment variables"""
+    hosts = os.environ.get('HOSTS', '').split(',')
+    nodes = []
+    for i, hostname in enumerate(hosts):
+        if hostname:  # Skip empty strings
+            nodes.append({
+                'rank': i,
+                'hostname': hostname.strip()  # Remove any whitespace
+            })
+    return nodes
+
 def main():
     # Set environment variables for distributed setup
     os.environ['RANK'] = os.getenv('RANK', '0')
