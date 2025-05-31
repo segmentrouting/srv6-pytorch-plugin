@@ -24,7 +24,7 @@ COPY route_programmer.py /app/
 COPY srv6_plugin.py /app/
 
 # Copy demo files
-COPY demo/test_dist.py /app/
+COPY demo/test_plugin.py /app/
 COPY demo/.env /app/
 
 # Create a script to set capabilities at runtime
