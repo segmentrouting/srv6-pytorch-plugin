@@ -23,14 +23,10 @@ COPY controller.py /app/
 COPY route_programmer.py /app/
 COPY srv6_plugin.py /app/
 
-# Copy demo files
-COPY demo/test_plugin.py /app/
-COPY demo/.env /app/
-
 # Create a script to set capabilities at runtime
 RUN echo '#!/bin/bash\nsetcap cap_net_admin,cap_net_raw+ep /sbin/ip\nexec "$@"' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 WORKDIR /app
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["/bin/bash"] 
+CMD ["/bin/bash"]

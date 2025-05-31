@@ -1,6 +1,6 @@
 # SRv6 PyTorch Plugin
 
-A PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6 (Segment Routing over IPv6).
+A PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6
 
 ## Overview
 
@@ -12,11 +12,11 @@ This plugin enhances PyTorch's distributed training by:
 
 ## Components
 
-- `network_optimized_distributed.py`: Main plugin that wraps PyTorch's distributed functionality
+- `srv6_plugin.py`: Main plugin that wraps PyTorch's distributed functionality
 - `route_programmer.py`: Platform-specific route programming (Linux/VPP)
-- `test_basic.py`: Simple test script for basic functionality testing
-- `demo/test_plugin.py`: Full demo application using containerlab
-- `distributed_app.py`: Example distributed training application
+- `controller.py`: Network controller for managing routes and API interactions
+- `dist_setup.py`: Distributed training setup utilities
+- `demo/test_dist.py`: Full demo application using containerlab
 
 ### Prerequisites
 
@@ -48,49 +48,24 @@ pip install -r requirements.txt
 ```bash
 JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
 TOPOLOGY_COLLECTION=your-collection-name
-BACKEND_INTERFACE=eth0
+BACKEND_INTERFACE=eth1
 ROUTE_PLATFORM=linux
 ROUTE_TABLE_ID=254
+HOSTS=host00,host01,host02  # Comma-separated list of hostnames
 ```
-
-5. Test the installation:
-```bash
-python3 test_basic.py
-sudo -E ./venv/bin/python test_basic.py
-sudo -E bash -c 'source venv/bin/activate && python test_basic.py'
-```
-
-or 
-```bash
-# Using default values (host00 -> host01)
-sudo -E ./venv/bin/python test_basic.py
-
-# Or specify different hosts
-sudo -E TEST_SOURCE=hosts/clab-sonic-host02 TEST_DESTINATION=hosts/clab-sonic-host03 ./venv/bin/python test_basic.py
-```
-
-This will:
-- Initialize the plugin
-- Program SRv6 routes
-- Test connectivity with a ping
-- 
-Note: For full functionality including SRv6 route programming, your system needs:
-- Linux kernel with SRv6 support
-- `iproute2` package installed
-- Appropriate permissions to program routes
 
 ### Basic Usage
 
 ```python
-from network_optimized_distributed import NetworkOptimizedDistributed
+from srv6_plugin import DemoPlugin
 
 # Initialize with Jalapeno API endpoint
-net_dist = NetworkOptimizedDistributed(
+plugin = DemoPlugin(
     api_endpoint=os.getenv('JALAPENO_API_ENDPOINT')
 )
 
 # Initialize distributed training with network optimization
-net_dist.init_process_group(backend="nccl")
+plugin.init_process_group()
 ```
 
 ## Environment Variables
@@ -100,35 +75,35 @@ net_dist.init_process_group(backend="nccl")
 - `BACKEND_INTERFACE`: Network interface for SRv6 routes (default: eth1)
 - `ROUTE_PLATFORM`: Route programming platform (linux/vpp)
 - `ROUTE_TABLE_ID`: Routing table ID (default: 254)
-- `TEST_DESTINATION`: IPv6 address for testing connectivity (used by test_basic.py)
+- `HOSTS`: Comma-separated list of hostnames for distributed training
+- `RANK`: Node rank in distributed training (0-based)
+- `WORLD_SIZE`: Total number of nodes in distributed training
+- `MASTER_ADDR`: IP address of the master node
+- `MASTER_PORT`: Port for distributed training communication
 
 ## Demo
 
 The `demo/` directory contains a complete example using containerlab to simulate a network topology with SONiC switches. See `demo/readme.md` for detailed instructions.
 
-## Kubernetes Deployment
-
-The `k8s/` directory contains Kubernetes deployment files for running distributed training jobs with network optimization.
-
 ## Application flow
 
 [PyTorch Distributed Training]
         ↓
-[NetworkOptimizedDistributed Plugin]
+[DemoPlugin]
         ↓
-1. Intercepts NCCL initialization
-2. Collects node information (IP, hostname)
+1. Initializes distributed process group
+2. Collects node information from environment
         ↓
-[Jalapeno API]
+[Network Controller]
         ↓
-3. Queries /graphs/{collection_name}/shortest_path/load
+3. Queries Jalapeno API for optimized paths
 4. Gets back SRv6 path information
         ↓
 [Route Programmer]
         ↓
 5. Programs local SRv6 routes
         ↓
-[NCCL Communication]
+[Distributed Training Communication]
 
 ## Contributing
 

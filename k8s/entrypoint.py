@@ -2,7 +2,7 @@
 import os
 import sys
 import torch
-from network_optimized_distributed import NetworkOptimizedDistributed
+from srv6_plugin import DemoPlugin
 
 def main():
     # Get environment variables set by Kubernetes
@@ -17,11 +17,13 @@ def main():
     print(f"Master: {master_addr}:{master_port}")
     print(f"API Endpoint: {api_endpoint}")
     
-    # Initialize our network-optimized distributed wrapper
-    net_dist = NetworkOptimizedDistributed(api_endpoint=api_endpoint)
+    # Initialize our SRv6 plugin
+    plugin = DemoPlugin(api_endpoint=api_endpoint)
     
     # Initialize distributed training with network optimization
-    net_dist.init_process_group(backend="nccl")
+    if not plugin.init_process_group():
+        print("Failed to initialize distributed training")
+        sys.exit(1)
     
     # Now run your actual training script with the remaining arguments
     if len(sys.argv) > 1:

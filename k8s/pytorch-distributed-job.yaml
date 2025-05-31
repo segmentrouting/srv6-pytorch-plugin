@@ -16,7 +16,7 @@ spec:
             name: pytorch-distributed-config
         env:
         - name: MASTER_ADDR
-          value: "pytorch-distributed-training-0"  # First pod hostname
+          value: "2001:db8:1000::2"  # IPv6 address of master node
         - name: RANK
           value: "0"  # For a single job, we'll use rank 0
         volumeMounts:
