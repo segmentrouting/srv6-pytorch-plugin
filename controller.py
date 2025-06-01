@@ -17,7 +17,7 @@ class NetworkProgrammer:
         platform = os.environ.get('ROUTE_PLATFORM', 'linux')
         try:
             self.route_programmer = RouteProgrammerFactory.get_programmer(platform)
-            logger.info(f"Initialized {platform} route programmer")
+            #logger.info(f"Initialized {platform} route programmer")
         except Exception as e:
             logger.error(f"Failed to initialize route programmer: {e}")
             logger.warning("Route programming will be disabled")
@@ -26,20 +26,21 @@ class NetworkProgrammer:
     def get_route_info(self, source, destination):
         """Get route information from the API"""
         try:
-            #logger.info(f"Calling network API for {source} -> {destination}")
+            # logger.info(f"Calling network API for {source} -> {destination}")
             url = f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load"
             params = {
                 'source': source,
                 'destination': destination,
                 'direction': 'outbound'
             }
-            #logger.info(f"API Parameters: {params}")
+            # logger.info(f"API URL: {url}")
+            # logger.info(f"API Parameters: {params}")
             
             response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
-            #logger.info(f"API Response: {data}")
+            # logger.info(f"API Response: {data}")
             return data
         except Exception as e:
             logger.error(f"Network API call failed for {source} -> {destination}: {e}")

@@ -43,7 +43,7 @@ def main():
     os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth1')
     os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
     
-    # # Print all environment variables for debugging
+    # Print all environment variables for debugging
     # print("\nEnvironment Variables:")
     # print("-" * 50)
     # print(f"RANK: {os.environ['RANK']}")
@@ -62,24 +62,23 @@ def main():
             print("Error: JALAPENO_API_ENDPOINT environment variable not set")
             return
         
-        print("\nInitializing demo plugin...")
+        #print("\nInitializing demo plugin...")
         plugin = DemoPlugin(api_endpoint)
         
         # Initialize distributed training
-        print("\nInitializing distributed training...")
+        #print("\nInitializing distributed training...")
         if not plugin.init_process_group():
             print("Failed to initialize distributed training")
             return
             
         # Program routes
-        #print("\nProgramming routes...")
         nodes = get_all_nodes()
         if not plugin.network_programmer.program_all_routes(nodes):
             print("Failed to program routes")
             return
             
         # Test connectivity
-        print("\nTesting connectivity between nodes...", flush=True)
+        #print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         
