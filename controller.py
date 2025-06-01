@@ -82,30 +82,7 @@ class NetworkProgrammer:
             logger.error("Route programmer not initialized, cannot program routes")
             return False
         
-        # Generate all possible source/destination pairs
-        all_pairs = []
-        for i in range(len(nodes)):
-            for j in range(len(nodes)):
-                if i != j:  # Skip self-pairs
-                    all_pairs.append({
-                        'source': f"hosts/{nodes[i]['hostname']}",
-                        'destination': f"hosts/{nodes[j]['hostname']}"
-                    })
-        
-        #logger.info(f"Generated source/destination pairs: {all_pairs}")
-        
-        # Get route information for each pair
-        route_info = {}
-        for pair in all_pairs:
-            api_response = self.get_route_info(pair['source'], pair['destination'])
-            if api_response and api_response.get('found'):
-                route_info[f"{pair['source']}_{pair['destination']}"] = api_response
-                #logger.info(f"Found route for {pair['source']} -> {pair['destination']}")
-            else:
-                logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
-        
-        # Program routes for current node
-        hostname_prefix = os.environ.get('HOSTNAME_PREFIX', 'host')
+        # Get current node's hostname
         rank = int(os.environ.get('RANK', '0'))
         current_host = None
         
@@ -119,15 +96,25 @@ class NetworkProgrammer:
             logger.error(f"Could not find hostname for rank {rank}")
             return False
         
-        for pair_key, api_response in route_info.items():
-            source, destination = pair_key.split('_')
-            if source == current_host and api_response.get('found'):
+        # Only generate routes from current host to other nodes
+        all_pairs = []
+        for node in nodes:
+            if node['rank'] != rank:  # Skip self
+                all_pairs.append({
+                    'source': current_host,
+                    'destination': f"hosts/{node['hostname']}"
+                })
+        
+        # Program one route per destination
+        for pair in all_pairs:
+            api_response = self.get_route_info(pair['source'], pair['destination'])
+            if api_response and api_response.get('found'):
                 srv6_data = api_response.get('srv6_data', {})
                 if srv6_data:
                     # Extract destination network from the API response
                     dest_info = api_response.get('destination_info', {})
                     if not dest_info or 'prefix' not in dest_info or 'prefix_len' not in dest_info:
-                        logger.warning(f"No prefix information found for {destination}")
+                        logger.warning(f"No prefix information found for {pair['destination']}")
                         continue
                     
                     # Determine IP version from MASTER_ADDR
@@ -137,27 +124,26 @@ class NetworkProgrammer:
                     # Use the appropriate prefix and prefix_len from the API response
                     if is_ipv6:
                         if not dest_info.get('ipv6_address'):
-                            logger.warning(f"No IPv6 address found for {destination}")
+                            logger.warning(f"No IPv6 address found for {pair['destination']}")
                             continue
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     else:
                         if not dest_info.get('ipv4_address'):
-                            logger.warning(f"No IPv4 address found for {destination}")
+                            logger.warning(f"No IPv4 address found for {pair['destination']}")
                             continue
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     
                     try:
-                        #logger.info(f"Programming route to {destination} ({dest_ip})")
                         self.program_route(
                             destination=dest_ip,
                             srv6_data=srv6_data,
                             interface=os.environ.get('BACKEND_INTERFACE', 'eth1')
                         )
                     except Exception as e:
-                        logger.error(f"Error programming route to {destination}: {e}")
+                        logger.error(f"Error programming route to {pair['destination']}: {e}")
                 else:
-                    logger.warning(f"No SRv6 data found in API response for {destination}")
+                    logger.warning(f"No SRv6 data found in API response for {pair['destination']}")
             else:
-                logger.debug(f"Skipping route for {source} -> {destination} (not current host or no route found)")
+                logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
         return True 
