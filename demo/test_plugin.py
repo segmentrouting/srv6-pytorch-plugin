@@ -71,6 +71,9 @@ def main():
             print("Failed to initialize distributed training")
             return
             
+        # Get nodes for connectivity test
+        nodes = get_all_nodes()
+            
         # Test connectivity
         #print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
