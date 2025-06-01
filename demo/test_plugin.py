@@ -78,7 +78,7 @@ def main():
             return
             
         # Test connectivity
-        print("\nTesting connectivity between nodes...", flush=True)
+        #print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         

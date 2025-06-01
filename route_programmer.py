@@ -101,7 +101,7 @@ class LinuxRouteProgrammer(RouteProgrammer):
             # Try to delete existing route first
             try:
                 self.iproute.route('del', table=table_id, dst=str(net))
-                print(f"Deleted existing route to {str(net)} in table {table_id}")
+                print(f"\nDeleted existing route to {str(net)} in table {table_id}")
             except Exception as e:
                 # Ignore errors if route doesn't exist
                 pass
