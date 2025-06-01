@@ -82,6 +82,9 @@ class NetworkProgrammer:
             logger.error("Route programmer not initialized, cannot program routes")
             return False
         
+        # Track which routes have been programmed
+        programmed_routes = set()
+        
         # Generate all possible source/destination pairs
         all_pairs = []
         for i in range(len(nodes)):
@@ -92,15 +95,12 @@ class NetworkProgrammer:
                         'destination': f"hosts/{nodes[j]['hostname']}"
                     })
         
-        #logger.info(f"Generated source/destination pairs: {all_pairs}")
-        
         # Get route information for each pair
         route_info = {}
         for pair in all_pairs:
             api_response = self.get_route_info(pair['source'], pair['destination'])
             if api_response and api_response.get('found'):
                 route_info[f"{pair['source']}_{pair['destination']}"] = api_response
-                #logger.info(f"Found route for {pair['source']} -> {pair['destination']}")
             else:
                 logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
@@ -146,13 +146,18 @@ class NetworkProgrammer:
                             continue
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     
+                    # Skip if we've already programmed this route
+                    if dest_ip in programmed_routes:
+                        logger.debug(f"Skipping duplicate route to {dest_ip}")
+                        continue
+                    
                     try:
-                        #logger.info(f"Programming route to {destination} ({dest_ip})")
                         self.program_route(
                             destination=dest_ip,
                             srv6_data=srv6_data,
                             interface=os.environ.get('BACKEND_INTERFACE', 'eth1')
                         )
+                        programmed_routes.add(dest_ip)
                     except Exception as e:
                         logger.error(f"Error programming route to {destination}: {e}")
                 else:
