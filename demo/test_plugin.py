@@ -71,12 +71,6 @@ def main():
             print("Failed to initialize distributed training")
             return
             
-        # Program routes
-        nodes = get_all_nodes()
-        if not plugin.network_programmer.program_all_routes(nodes):
-            print("Failed to program routes")
-            return
-            
         # Test connectivity
         #print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
