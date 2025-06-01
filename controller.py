@@ -105,25 +105,16 @@ class NetworkProgrammer:
                     'destination': f"hosts/{node['hostname']}"
                 })
         
-        # Get route information for each pair
-        route_info = {}
+        # Program one route per destination
         for pair in all_pairs:
             api_response = self.get_route_info(pair['source'], pair['destination'])
             if api_response and api_response.get('found'):
-                route_info[f"{pair['source']}_{pair['destination']}"] = api_response
-            else:
-                logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
-        
-        # Program routes for current node
-        for pair_key, api_response in route_info.items():
-            source, destination = pair_key.split('_')
-            if api_response.get('found'):
                 srv6_data = api_response.get('srv6_data', {})
                 if srv6_data:
                     # Extract destination network from the API response
                     dest_info = api_response.get('destination_info', {})
                     if not dest_info or 'prefix' not in dest_info or 'prefix_len' not in dest_info:
-                        logger.warning(f"No prefix information found for {destination}")
+                        logger.warning(f"No prefix information found for {pair['destination']}")
                         continue
                     
                     # Determine IP version from MASTER_ADDR
@@ -133,12 +124,12 @@ class NetworkProgrammer:
                     # Use the appropriate prefix and prefix_len from the API response
                     if is_ipv6:
                         if not dest_info.get('ipv6_address'):
-                            logger.warning(f"No IPv6 address found for {destination}")
+                            logger.warning(f"No IPv6 address found for {pair['destination']}")
                             continue
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     else:
                         if not dest_info.get('ipv4_address'):
-                            logger.warning(f"No IPv4 address found for {destination}")
+                            logger.warning(f"No IPv4 address found for {pair['destination']}")
                             continue
                         dest_ip = f"{dest_info['prefix']}/{dest_info['prefix_len']}"
                     
@@ -149,8 +140,10 @@ class NetworkProgrammer:
                             interface=os.environ.get('BACKEND_INTERFACE', 'eth1')
                         )
                     except Exception as e:
-                        logger.error(f"Error programming route to {destination}: {e}")
+                        logger.error(f"Error programming route to {pair['destination']}: {e}")
                 else:
-                    logger.warning(f"No SRv6 data found in API response for {destination}")
+                    logger.warning(f"No SRv6 data found in API response for {pair['destination']}")
+            else:
+                logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
         return True 
