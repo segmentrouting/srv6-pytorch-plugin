@@ -1,11 +1,11 @@
 # SRv6 PyTorch Plugin
 
-A PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6
+A demo PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6
 
 ## Overview
 
 This plugin enhances PyTorch's distributed training by:
-1. Intercepting NCCL communication setup
+1. Intercepting Gloo communication setup (a future version will work with NCCL)
 2. Querying Jalapeno API for optimized SRv6 paths
 3. Programming local SRv6 routes for optimal network paths
 4. Enabling distributed training with network-aware routing
