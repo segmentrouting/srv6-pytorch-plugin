@@ -1,15 +1,30 @@
+"""
+Network controller for SRv6 route programming.
+"""
+
 import os
 import logging
 import requests
-from route_programmer import RouteProgrammerFactory
+from .route_programmer import RouteProgrammerFactory
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class NetworkProgrammer:
-    def __init__(self, api_endpoint):
-        """Initialize with the network API endpoint"""
+    """
+    Network programmer that interfaces with the Jalapeño API to get
+    optimal routes and programs them on the local system.
+    """
+    
+    def __init__(self, api_endpoint: str):
+        """
+        Initialize with the network API endpoint.
+        
+        Args:
+            api_endpoint: URL of the Jalapeño API endpoint.
+        """
         self.api_endpoint = api_endpoint
         self.collection_name = os.environ.get('TOPOLOGY_COLLECTION', 'network_topology')
         
@@ -17,44 +32,60 @@ class NetworkProgrammer:
         platform = os.environ.get('ROUTE_PLATFORM', 'linux')
         try:
             self.route_programmer = RouteProgrammerFactory.get_programmer(platform)
-            #logger.info(f"Initialized {platform} route programmer")
         except Exception as e:
             logger.error(f"Failed to initialize route programmer: {e}")
             logger.warning("Route programming will be disabled")
             self.route_programmer = None
     
-    def get_route_info(self, source, destination):
-        """Get route information from the API"""
+    def get_route_info(self, source: str, destination: str) -> dict:
+        """
+        Get route information from the API.
+        
+        Args:
+            source: Source node identifier (e.g., 'hosts/host01')
+            destination: Destination node identifier (e.g., 'hosts/host02')
+            
+        Returns:
+            API response dictionary or None if the call failed.
+        """
         try:
-            # logger.info(f"Calling network API for {source} -> {destination}")
             url = f"{self.api_endpoint}/graphs/{self.collection_name}/shortest_path/load"
             params = {
                 'source': source,
                 'destination': destination,
                 'direction': 'outbound'
             }
-            # logger.info(f"API URL: {url}")
-            # logger.info(f"API Parameters: {params}")
             
             response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
-            # logger.info(f"API Response: {data}")
             return data
         except Exception as e:
             logger.error(f"Network API call failed for {source} -> {destination}: {e}")
             return None
     
-    def program_route(self, destination, srv6_data, interface='eth1'):
-        """Program an SRv6 route"""
+    def program_route(self, destination: str, srv6_data: dict, interface: str = 'eth1') -> bool:
+        """
+        Program an SRv6 route.
+        
+        Args:
+            destination: Destination IP address or CIDR prefix.
+            srv6_data: SRv6 data from the API response.
+            interface: Outbound interface name.
+            
+        Returns:
+            True if the route was programmed successfully.
+        """
         if not self.route_programmer:
             logger.error("Route programmer not initialized, cannot program route")
             return False
         
         # Convert destination IP to CIDR if it's not already
         if '/' not in destination:
-            destination = f"{destination}/32"
+            # Use /128 for IPv6, /32 for IPv4
+            prefix_len = "128" if ':' in destination else "32"
+            destination = f"{destination}/{prefix_len}"
         
         try:
             logger.info(f"  Route to {destination}, SRv6 data: {srv6_data}")
@@ -66,18 +97,21 @@ class NetworkProgrammer:
                 table_id=int(os.environ.get('ROUTE_TABLE_ID', '254'))
             )
             
-            # if success:
-            #     logger.info(f"Route programming successful: {message}")
-            # else:
-            #     logger.error(f"Route programming failed: {message}")
-            
             return success
         except Exception as e:
             logger.error(f"Exception during route programming: {e}")
             return False
     
-    def program_all_routes(self, nodes):
-        """Program routes for all node pairs"""
+    def program_all_routes(self, nodes: list) -> bool:
+        """
+        Program routes for all node pairs.
+        
+        Args:
+            nodes: List of node info dictionaries from get_all_nodes().
+            
+        Returns:
+            True if routes were programmed (even if some failed).
+        """
         if not self.route_programmer:
             logger.error("Route programmer not initialized, cannot program routes")
             return False
@@ -146,4 +180,5 @@ class NetworkProgrammer:
             else:
                 logger.warning(f"No route found for {pair['source']} -> {pair['destination']}")
         
-        return True 
+        return True
+

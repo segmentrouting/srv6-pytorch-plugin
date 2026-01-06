@@ -1,23 +1,53 @@
+#!/usr/bin/env python3
+"""
+SRv6 Connectivity Test Example
+
+This script demonstrates how to use the SRv6 PyTorch Plugin to:
+1. Initialize PyTorch distributed training
+2. Program SRv6 routes via the Jalapeño API
+3. Test connectivity between distributed training nodes
+
+Usage:
+    # Set required environment variables (or use a .env file)
+    export RANK=0
+    export WORLD_SIZE=2
+    export MASTER_ADDR=fcbb:0:0800:0::2
+    export MASTER_PORT=29500
+    export BACKEND_INTERFACE=net1
+    export JALAPENO_API_ENDPOINT=http://api:8080
+    export TOPOLOGY_COLLECTION=network_topology
+    export HOSTS=host01,host02
+    
+    # Run the test
+    python test_connectivity.py
+"""
+
 import os
 import time
 import atexit
 import torch.distributed as dist
 from dotenv import load_dotenv
-from srv6_plugin import DemoPlugin
 
-# Load environment variables
-load_dotenv()
+# Import from the srv6_plugin package
+from srv6_plugin import SRv6Plugin
+
+# Load environment variables from .env file (only if not already set)
+# In Kubernetes, env vars are set by the pod spec/ConfigMap
+load_dotenv(override=False)
+
 
 def cleanup():
-    """Cleanup function to destroy distributed process group"""
+    """Cleanup function to destroy distributed process group."""
     if dist.is_initialized():
         dist.destroy_process_group()
+
 
 # Register cleanup function
 atexit.register(cleanup)
 
+
 def get_all_nodes():
-    """Get list of all nodes in the distributed setup from environment variables"""
+    """Get list of all nodes in the distributed setup from environment variables."""
     hosts = os.environ.get('HOSTS', '').split(',')
     nodes = []
     for i, hostname in enumerate(hosts):
@@ -28,45 +58,38 @@ def get_all_nodes():
             })
     return nodes
 
+
 def main():
-    # Set environment variables for distributed setup
-    os.environ['RANK'] = os.getenv('RANK', '0')
-    os.environ['WORLD_SIZE'] = os.getenv('WORLD_SIZE', '3')  # Using 3 hosts
+    # All configuration comes from environment variables
+    # These should be set by the Kubernetes pod spec or .env file
+    rank = int(os.getenv('RANK', '0'))
+    world_size = int(os.getenv('WORLD_SIZE', '2'))
+    master_addr = os.getenv('MASTER_ADDR')
+    master_port = os.getenv('MASTER_PORT', '29500')
+    backend_interface = os.getenv('BACKEND_INTERFACE', 'net1')
     
-    # Get the master IP address based on rank
-    rank = int(os.environ['RANK'])
-    # Always use host00 as the master
-    master_ip = '2001:db8:1000::2'  # host00 IPv6
+    # Validate required environment variables
+    if not master_addr:
+        print("Error: MASTER_ADDR environment variable is required")
+        return
     
-    os.environ['MASTER_ADDR'] = master_ip
-    os.environ['MASTER_PORT'] = os.getenv('MASTER_PORT', '29501')
-    os.environ['BACKEND_INTERFACE'] = os.getenv('BACKEND_INTERFACE', 'eth1')
-    os.environ['TOPOLOGY_COLLECTION'] = os.getenv('TOPOLOGY_COLLECTION')
-    
-    # Print all environment variables for debugging
-    # print("\nEnvironment Variables:")
-    # print("-" * 50)
-    # print(f"RANK: {os.environ['RANK']}")
-    # print(f"WORLD_SIZE: {os.environ['WORLD_SIZE']}")
-    # print(f"MASTER_ADDR: {os.environ['MASTER_ADDR']}")
-    # print(f"MASTER_PORT: {os.environ['MASTER_PORT']}")
-    # print(f"BACKEND_INTERFACE: {os.environ['BACKEND_INTERFACE']}")
-    # print(f"TOPOLOGY_COLLECTION: {os.environ['TOPOLOGY_COLLECTION']}")
-    # print(f"JALAPENO_API_ENDPOINT: {os.getenv('JALAPENO_API_ENDPOINT')}")
-    # print("-" * 50)
+    # Set environment variables for torch.distributed
+    os.environ['RANK'] = str(rank)
+    os.environ['WORLD_SIZE'] = str(world_size)
+    os.environ['MASTER_ADDR'] = master_addr
+    os.environ['MASTER_PORT'] = master_port
+    os.environ['BACKEND_INTERFACE'] = backend_interface
     
     try:
-        # Initialize the demo plugin
+        # Initialize the plugin
         api_endpoint = os.getenv('JALAPENO_API_ENDPOINT')
         if not api_endpoint:
             print("Error: JALAPENO_API_ENDPOINT environment variable not set")
             return
         
-        #print("\nInitializing demo plugin...")
-        plugin = DemoPlugin(api_endpoint)
+        plugin = SRv6Plugin(api_endpoint)
         
         # Initialize distributed training
-        #print("\nInitializing distributed training...")
         if not plugin.init_process_group():
             print("Failed to initialize distributed training")
             return
@@ -75,7 +98,6 @@ def main():
         nodes = get_all_nodes()
             
         # Test connectivity
-        #print("\nTesting connectivity between nodes...", flush=True)
         # Get current node's hostname
         current_host = os.environ.get('HOSTNAME', f"host{rank:02d}")
         
@@ -84,6 +106,9 @@ def main():
         is_ipv6 = ':' in master_addr
         
         # Test connectivity to all other nodes
+        ping_success = 0
+        ping_fail = 0
+        
         for node in nodes:
             if node['hostname'] != current_host:  # Skip self
                 print(f"\nTesting connectivity from {current_host} to {node['hostname']}...", flush=True)
@@ -102,13 +127,25 @@ def main():
                     if ping_destination:
                         print(f"Pinging {ping_destination}", flush=True)
                         ping_cmd = "ping6" if is_ipv6 else "ping"
-                        os.system(f"{ping_cmd} -c 4 {ping_destination}")
+                        result = os.system(f"{ping_cmd} -c 4 {ping_destination}")
+                        if result == 0:
+                            ping_success += 1
+                        else:
+                            ping_fail += 1
                     else:
                         print(f"Could not determine ping destination for {node['hostname']}", flush=True)
+                        ping_fail += 1
                 else:
                     print(f"Could not get route information for {node['hostname']}", flush=True)
+                    ping_fail += 1
         
-        print("\nTest completed successfully!", flush=True)
+        # Report results
+        if ping_fail == 0 and ping_success > 0:
+            print(f"\nSRv6 connectivity test PASSED! ({ping_success} successful pings)", flush=True)
+        elif ping_success > 0:
+            print(f"\nSRv6 connectivity test PARTIAL: {ping_success} passed, {ping_fail} failed", flush=True)
+        else:
+            print(f"\nSRv6 connectivity test FAILED! ({ping_fail} failed attempts)", flush=True)
         
     except Exception as e:
         print(f"\nError during test: {str(e)}")
@@ -123,5 +160,7 @@ def main():
         # Ensure cleanup happens even if there's an error
         cleanup()
 
+
 if __name__ == "__main__":
-    main() 
+    main()
+

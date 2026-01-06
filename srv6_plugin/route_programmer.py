@@ -1,26 +1,56 @@
+"""
+Route programmers for Linux and VPP platforms.
+"""
+
 from pyroute2 import IPRoute
-import vpp_papi
 from abc import ABC, abstractmethod
 import os
 import ipaddress
 
+
 class RouteProgrammer(ABC):
+    """Abstract base class for route programmers."""
+    
     @abstractmethod
-    def program_route(self, destination_prefix, srv6_usid, **kwargs):
+    def program_route(self, destination_prefix: str, srv6_usid: str, **kwargs) -> tuple:
+        """
+        Program an SRv6 route.
+        
+        Args:
+            destination_prefix: Destination CIDR prefix.
+            srv6_usid: SRv6 USID for encapsulation.
+            **kwargs: Platform-specific options.
+            
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
         pass
 
     @abstractmethod
-    def delete_route(self, destination_prefix, **kwargs):
+    def delete_route(self, destination_prefix: str, **kwargs) -> tuple:
+        """
+        Delete a route.
+        
+        Args:
+            destination_prefix: Destination CIDR prefix.
+            **kwargs: Platform-specific options.
+            
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
         pass
+
 
 class LinuxRouteProgrammer(RouteProgrammer):
+    """Route programmer for Linux using pyroute2."""
+    
     def __init__(self):
         if os.geteuid() != 0:
             raise PermissionError("Root privileges required for route programming. Please run with sudo.")
         self.iproute = IPRoute()
 
-    def _expand_srv6_usid(self, usid):
-        """Expand SRv6 USID to full IPv6 address"""
+    def _expand_srv6_usid(self, usid: str) -> str:
+        """Expand SRv6 USID to full IPv6 address."""
         # Remove any trailing colons
         usid = usid.rstrip(':')
         
@@ -33,8 +63,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # Join with :: to represent remaining zeros
         return ':'.join(parts) + '::'
 
-    def _append_dest_function(self, usid, srv6_data=None):
-        """Append destination function to SRv6 USID"""
+    def _append_dest_function(self, usid: str, srv6_data: dict = None) -> str:
+        """Append destination function to SRv6 USID."""
         # First try to get function from API response
         function = None
         if srv6_data and 'srv6_endpoint_behavior' in srv6_data:
@@ -59,9 +89,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         # Join with :: to represent remaining zeros
         return ':'.join(parts) + '::'
 
-    def program_route(self, destination_prefix, srv6_usid, **kwargs):
-        """Program Linux SRv6 route using pyroute2"""
-        #print(f"\nProgramming routes: ")
+    def program_route(self, destination_prefix: str, srv6_usid: str, **kwargs) -> tuple:
+        """Program Linux SRv6 route using pyroute2."""
         try:
             if not destination_prefix:
                 raise ValueError("destination_prefix is required")
@@ -94,15 +123,17 @@ class LinuxRouteProgrammer(RouteProgrammer):
             if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
             
             # Create encap info
+            # Use reduced encapsulation (encap.red) for efficiency when possible
+            encap_mode = os.getenv('SRV6_ENCAP_MODE', 'encap.red')
             encap = {'type': 'seg6',
-                    'mode': 'encap',
+                    'mode': encap_mode,
                     'segs': [expanded_usid]}
             
             # Try to delete existing route first
             try:
                 self.iproute.route('del', table=table_id, dst=str(net))
                 print(f"\nDeleted existing route to {str(net)} in table {table_id}")
-            except Exception as e:
+            except Exception:
                 # Ignore errors if route doesn't exist
                 pass
             
@@ -119,8 +150,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         except Exception as e:
             return False, f"Failed to program route: {str(e)}"
         
-    def delete_route(self, destination_prefix, **kwargs):
-        """Delete Linux SRv6 route using pyroute2"""
+    def delete_route(self, destination_prefix: str, **kwargs) -> tuple:
+        """Delete Linux SRv6 route using pyroute2."""
         try:
             if not destination_prefix:
                 raise ValueError("destination_prefix is required")
@@ -150,8 +181,8 @@ class LinuxRouteProgrammer(RouteProgrammer):
         if hasattr(self, 'iproute'):
             self.iproute.close()
 
-    def program_l3vpn_route(self, destination_prefix, srv6_usid, vpn_label, **kwargs):
-        """Program Linux SRv6 L3VPN route"""
+    def program_l3vpn_route(self, destination_prefix: str, srv6_usid: str, vpn_label: str, **kwargs) -> tuple:
+        """Program Linux SRv6 L3VPN route."""
         try:
             if not destination_prefix:
                 raise ValueError("destination_prefix is required")
@@ -180,15 +211,17 @@ class LinuxRouteProgrammer(RouteProgrammer):
             if_index = self.iproute.link_lookup(ifname=kwargs.get('outbound_interface'))[0]
             
             # Create encap info - use the SID directly from the API
+            # Use reduced encapsulation (encap.red) for efficiency when possible
+            encap_mode = os.getenv('SRV6_ENCAP_MODE', 'encap.red')
             encap = {'type': 'seg6',
-                    'mode': 'encap',
+                    'mode': encap_mode,
                     'segs': [srv6_usid]}
             
             # Try to delete existing route first
             try:
                 self.iproute.route('del', table=table_id, dst=str(net))
                 print(f"Deleted existing route to {str(net)} in table {table_id}")
-            except Exception as e:
+            except Exception:
                 # Ignore errors if route doesn't exist
                 pass
             
@@ -205,7 +238,10 @@ class LinuxRouteProgrammer(RouteProgrammer):
         except Exception as e:
             return False, f"Failed to program L3VPN route: {str(e)}"
 
+
 class VPPRouteProgrammer(RouteProgrammer):
+    """Route programmer for VPP using CLI."""
+    
     def __init__(self):
         try:
             import subprocess
@@ -225,8 +261,8 @@ class VPPRouteProgrammer(RouteProgrammer):
         except Exception as e:
             raise RuntimeError(f"Failed to connect to VPP: {str(e)}")
 
-    def _expand_srv6_usid(self, usid):
-        """Expand SRv6 USID to full IPv6 address"""
+    def _expand_srv6_usid(self, usid: str) -> str:
+        """Expand SRv6 USID to full IPv6 address."""
         # Remove any trailing colons
         usid = usid.rstrip(':')
         
@@ -239,8 +275,8 @@ class VPPRouteProgrammer(RouteProgrammer):
         # Join with :: to represent remaining zeros
         return ':'.join(parts) + '::'
 
-    def program_route(self, destination_prefix, srv6_usid, **kwargs):
-        """Program VPP SRv6 route using CLI"""
+    def program_route(self, destination_prefix: str, srv6_usid: str, **kwargs) -> tuple:
+        """Program VPP SRv6 route using CLI."""
         try:
             bsid = kwargs.get('bsid')
             if not bsid:
@@ -275,8 +311,8 @@ class VPPRouteProgrammer(RouteProgrammer):
         except Exception as e:
             return False, f"Failed to program route: {str(e)}"
 
-    def delete_route(self, destination_prefix, **kwargs):
-        """Delete VPP SRv6 route using CLI"""
+    def delete_route(self, destination_prefix: str, **kwargs) -> tuple:
+        """Delete VPP SRv6 route using CLI."""
         try:
             bsid = kwargs.get('bsid')
             if not bsid:
@@ -307,8 +343,8 @@ class VPPRouteProgrammer(RouteProgrammer):
     def __del__(self):
         pass  # No cleanup needed for CLI approach
 
-    def program_l3vpn_route(self, destination_prefix, srv6_usid, vpn_label, **kwargs):
-        """Program VPP SRv6 L3VPN route"""
+    def program_l3vpn_route(self, destination_prefix: str, srv6_usid: str, vpn_label: str, **kwargs) -> tuple:
+        """Program VPP SRv6 L3VPN route."""
         try:
             bsid = kwargs.get('bsid')
             if not bsid:
@@ -345,12 +381,28 @@ class VPPRouteProgrammer(RouteProgrammer):
         except Exception as e:
             return False, f"Failed to program L3VPN route: {str(e)}"
 
+
 class RouteProgrammerFactory:
+    """Factory for creating route programmers."""
+    
     @staticmethod
-    def get_programmer(platform):
+    def get_programmer(platform: str) -> RouteProgrammer:
+        """
+        Get a route programmer for the specified platform.
+        
+        Args:
+            platform: 'linux' or 'vpp'
+            
+        Returns:
+            RouteProgrammer instance.
+            
+        Raises:
+            ValueError: If platform is not supported.
+        """
         if platform.lower() == 'linux':
             return LinuxRouteProgrammer()
         elif platform.lower() == 'vpp':
             return VPPRouteProgrammer()
         else:
-            raise ValueError(f"Unsupported platform: {platform}") 
+            raise ValueError(f"Unsupported platform: {platform}")
+

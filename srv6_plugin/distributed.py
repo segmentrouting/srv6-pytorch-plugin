@@ -1,3 +1,7 @@
+"""
+Distributed training setup utilities.
+"""
+
 import os
 import logging
 import torch.distributed as dist
@@ -7,8 +11,25 @@ import netifaces
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_node_info(backend_iface='eth1'):
-    """Get node information including hostname and IP address"""
+
+def get_node_info(backend_iface: str = None) -> dict:
+    """
+    Get node information including hostname and IP address.
+    
+    Args:
+        backend_iface: Network interface name for backend communication.
+                       Defaults to BACKEND_INTERFACE env var or 'net1'.
+    
+    Returns:
+        Dictionary with 'hostname', 'ip_address', and 'rank' keys.
+        
+    Raises:
+        ValueError: If IPv6 address cannot be determined for the interface.
+    """
+    # Get backend interface from environment if not specified
+    if backend_iface is None:
+        backend_iface = os.environ.get('BACKEND_INTERFACE', 'net1')
+    
     # Get hostname from environment variable, with a default based on rank
     hostname = os.environ.get('HOSTNAME')
     if not hostname:
@@ -33,11 +54,23 @@ def get_node_info(backend_iface='eth1'):
         'rank': int(os.environ.get('RANK', '0'))
     }
 
-def init_distributed():
-    """Initialize PyTorch distributed training"""
+
+def init_distributed() -> bool:
+    """
+    Initialize PyTorch distributed training.
+    
+    Reads configuration from environment variables:
+    - RANK: Process rank (default: 0)
+    - WORLD_SIZE: Total number of processes (default: 2)
+    - MASTER_ADDR: Master node address (default: localhost)
+    - MASTER_PORT: Master node port (default: 29500)
+    
+    Returns:
+        True if initialization succeeded, False otherwise.
+    """
     # Get distributed training info
     rank = int(os.environ.get('RANK', '0'))
-    world_size = int(os.environ.get('WORLD_SIZE', '1'))
+    world_size = int(os.environ.get('WORLD_SIZE', '2'))
     master_addr = os.environ.get('MASTER_ADDR', 'localhost')
     master_port = os.environ.get('MASTER_PORT', '29500')
     
@@ -64,7 +97,6 @@ def init_distributed():
             world_size=world_size,
             rank=rank
         )
-        #logger.info("dist.init_process_group completed successfully")
         
         # Verify initialization
         if dist.is_initialized():
@@ -79,8 +111,19 @@ def init_distributed():
         logger.error(f"Error details: {str(e)}")
         return False
 
-def get_all_nodes():
-    """Get information about all nodes in the distributed setup"""
+
+def get_all_nodes() -> list:
+    """
+    Get information about all nodes in the distributed setup.
+    
+    Uses PyTorch all_gather to collect node information from all ranks.
+    
+    Returns:
+        List of node info dictionaries sorted by rank.
+        
+    Raises:
+        RuntimeError: If distributed training is not initialized.
+    """
     if not dist.is_initialized():
         raise RuntimeError("Distributed training not initialized")
     
@@ -119,4 +162,5 @@ def get_all_nodes():
     
     # Sort nodes by rank to ensure consistent order
     all_nodes.sort(key=lambda x: x['rank'])
-    return all_nodes 
+    return all_nodes
+
