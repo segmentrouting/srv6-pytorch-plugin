@@ -1,126 +1,141 @@
 # SRv6 PyTorch Plugin
 
-A demo PyTorch plugin that integrates with Jalapeno API to optimize network paths for distributed training using SRv6
+A PyTorch distributed training plugin that leverages SRv6 (Segment Routing over IPv6) for intelligent traffic engineering. The plugin integrates with [Jalapeño](https://github.com/cisco-open/jalapeno) to dynamically program optimal network paths between distributed training nodes.
 
-## Overview
+## Features
 
-This plugin enhances PyTorch's distributed training by:
-1. Intercepting Gloo communication setup (a future version will work with NCCL)
-2. Querying Jalapeno API for optimized SRv6 paths
-3. Programming local SRv6 routes for optimal network paths
-4. Enabling distributed training with network-aware routing
+- **Automatic SRv6 Route Programming**: Queries the Jalapeño API for optimal paths and programs SRv6 encapsulation routes
+- **PyTorch Distributed Integration**: Seamlessly integrates with `torch.distributed` for distributed training
+- **Multi-Platform Support**: Route programming for Linux (via pyroute2) and VPP
+- **IPv4/IPv6 Support**: Works with both IPv4 and IPv6 networks
+- **Kubernetes Ready**: Designed for containerized deployments with Multus CNI support
 
-## Components
+## Architecture
 
-- `srv6_plugin.py`: Main plugin that wraps PyTorch's distributed functionality
-- `route_programmer.py`: Platform-specific route programming (Linux/VPP)
-- `controller.py`: Network controller for managing routes and API interactions
-- `dist_setup.py`: Distributed training setup utilities
-- `demo/test_dist.py`: Full demo application using containerlab
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Distributed Training Job                     │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────┤
+│   Node 0    │   Node 1    │   Node 2    │   Node 3    │   ...   │
+│ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │         │
+│ │ PyTorch │ │ │ PyTorch │ │ │ PyTorch │ │ │ PyTorch │ │         │
+│ │ Process │ │ │ Process │ │ │ Process │ │ │ Process │ │         │
+│ └────┬────┘ │ └────┬────┘ │ └────┬────┘ │ └────┬────┘ │         │
+│      │      │      │      │      │      │      │      │         │
+│ ┌────▼────┐ │ ┌────▼────┐ │ ┌────▼────┐ │ ┌────▼────┐ │         │
+│ │  SRv6   │ │ │  SRv6   │ │ │  SRv6   │ │ │  SRv6   │ │         │
+│ │ Plugin  │ │ │ Plugin  │ │ │ Plugin  │ │ │ Plugin  │ │         │
+│ └────┬────┘ │ └────┬────┘ │ └────┬────┘ │ └────┬────┘ │         │
+└──────┼──────┴──────┼──────┴──────┼──────┴──────┼──────┴─────────┘
+       │             │             │             │
+       └─────────────┴──────┬──────┴─────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │  Jalapeño   │
+                     │     API     │
+                     └─────────────┘
+```
 
-### Prerequisites
+## Installation
 
-- Python 3.8+
-- PyTorch
-- Access to Jalapeno API
-- Linux kernel with SRv6 support (for route programming)
+### From Source
 
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/segment-routing/srv6-pytorch-plugin.git
+git clone https://github.com/your-org/srv6-pytorch-plugin.git
 cd srv6-pytorch-plugin
+pip install -e .
 ```
 
-2. Create and activate a virtual environment (recommended):
+### Using pip (from source)
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Clone and install locally
+git clone https://github.com/segmentrouting/srv6-pytorch-plugin.git
+cd srv6-pytorch-plugin
+pip install .
 ```
 
-3. Install dependencies:
+### Docker
+
 ```bash
-pip install -r requirements.txt
+docker build -t srv6-pytorch-plugin:latest .
 ```
 
-4. Create a `.env` file with your configuration:
-```bash
-JALAPENO_API_ENDPOINT=http://jalapeno-api:8000
-TOPOLOGY_COLLECTION=your-collection-name
-BACKEND_INTERFACE=eth1
-ROUTE_PLATFORM=linux
-ROUTE_TABLE_ID=254
-HOSTS=host00,host01,host02  # Comma-separated list of hostnames
-```
-
-### Basic Usage
+## Quick Start
 
 ```python
-from srv6_plugin import DemoPlugin
+from srv6_plugin import SRv6Plugin
 
-# Initialize with Jalapeno API endpoint
-plugin = DemoPlugin(
-    api_endpoint=os.getenv('JALAPENO_API_ENDPOINT')
-)
+# Initialize the plugin with your Jalapeño API endpoint
+plugin = SRv6Plugin("http://jalapeno-api:8080")
 
-# Initialize distributed training with network optimization
-plugin.init_process_group()
+# Initialize distributed training and program SRv6 routes
+if plugin.init_process_group():
+    # Your distributed training code here
+    pass
 ```
 
-Set backend in [dist_setup.py](dist_setup.py):
-```python
-# Demo uses:
-dist.init_process_group(backend="gloo")
+## Configuration
 
-# NCCL:
-dist.init_process_group(backend="nccl")
+The plugin is configured via environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `RANK` | Yes | `0` | This node's rank in the distributed training |
+| `WORLD_SIZE` | Yes | `2` | Total number of nodes |
+| `MASTER_ADDR` | Yes | - | IP address of the master node |
+| `MASTER_PORT` | No | `29500` | Port for distributed training |
+| `BACKEND_INTERFACE` | No | `net1` | Network interface for SRv6 traffic |
+| `JALAPENO_API_ENDPOINT` | Yes | - | Jalapeño API URL |
+| `TOPOLOGY_COLLECTION` | No | `network_topology` | ArangoDB graph collection |
+| `ROUTE_PLATFORM` | No | `linux` | Route programmer: `linux` or `vpp` |
+| `ROUTE_TABLE_ID` | No | `254` | Linux routing table ID |
+| `SRV6_ENCAP_MODE` | No | `encap.red` | SRv6 encap mode: `encap` or `encap.red` |
+
+## Requirements
+
+- Python 3.10+
+- PyTorch 2.0+ (CPU or GPU version)
+- Root/CAP_NET_ADMIN for route programming
+- Access to a Jalapeño API instance
+
+## Project Structure
+
+```
+srv6-pytorch-plugin/
+├── srv6_plugin/           # Core plugin package
+│   ├── __init__.py
+│   ├── plugin.py          # Main SRv6Plugin class
+│   ├── distributed.py     # PyTorch distributed utilities
+│   ├── controller.py      # Network programming controller
+│   └── route_programmer.py # Linux/VPP route programmers
+├── examples/              # Example scripts
+│   └── test_connectivity.py
+├── deploy/                # Kubernetes deployment examples
+├── Dockerfile
+├── requirements.txt
+└── pyproject.toml
 ```
 
-## Environment Variables
+## Kubernetes Deployment
 
-- `JALAPENO_API_ENDPOINT`: URL of the Jalapeno API
-- `TOPOLOGY_COLLECTION`: Name of the topology collection in Jalapeno
-- `BACKEND_INTERFACE`: Network interface for SRv6 routes (default: eth1)
-- `ROUTE_PLATFORM`: Route programming platform (linux/vpp)
-- `ROUTE_TABLE_ID`: Routing table ID (default: 254)
-- `HOSTS`: Comma-separated list of hostnames for distributed training
-- `RANK`: Node rank in distributed training (0-based)
-- `WORLD_SIZE`: Total number of nodes in distributed training
-- `MASTER_ADDR`: IP address of the master node
-- `MASTER_PORT`: Port for distributed training communication
+See the `deploy/` directory for Kubernetes manifests. The plugin works with:
 
-## Demo
+- **Cilium** as the primary CNI
+- **Multus** for secondary network interfaces
+- **macvlan** for backend SRv6 traffic
 
-The `demo/` directory contains a complete example using containerlab to simulate a network topology with SONiC switches. See `demo/readme.md` for detailed instructions.
+## License
 
-## Application flow
-
-[PyTorch Distributed Training]
-        ↓
-[DemoPlugin]
-        ↓
-1. Initializes distributed process group
-2. Collects node information from environment
-        ↓
-[Network Controller]
-        ↓
-3. Queries Jalapeno API for optimized paths
-4. Gets back SRv6 path information
-        ↓
-[Route Programmer]
-        ↓
-5. Programs local SRv6 routes
-        ↓
-[Distributed Training Communication]
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+Contributions are welcome! Please read our contributing guidelines and submit pull requests.
 
-## License
+## Related Projects
+
+- [Jalapeño](https://github.com/cisco-open/jalapeno) - Network topology and path computation
+- [PyTorch Distributed](https://pytorch.org/docs/stable/distributed.html) - Distributed training framework
+- [Cilium](https://cilium.io/) - eBPF-based networking
 
